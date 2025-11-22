@@ -10,7 +10,6 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
-import { MailerService } from '@nestjs-modules/mailer';
 import {
   RequestResetCodeDto,
   ResetPasswordDto,
@@ -18,6 +17,8 @@ import {
 } from './dto/forget-reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { generateOtpCode, getTokens, hashOtpCode, verifyOtp } from './auth.utils';
+import { MailService } from '../mail/mail.service';
+import { MailTemplatesService } from '../mail/mail.template';
 
 
 @Injectable()
@@ -25,7 +26,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private mailerService: MailerService,
+    private mailerService: MailService,
+    private mailTemplatesService: MailTemplatesService,
   ) {}
 
 
@@ -43,13 +45,12 @@ export class AuthService {
     await this.prisma.otpCode.create({
       data: { email, code: hashedCode, expiresAt },
     });
-
+    const html = await this.mailTemplatesService.getEmailVerificationOtpTemplate(code);
     await this.mailerService.sendMail({
-      to: email,
-      subject: 'Your verification code',
-      text: `Your OTP code is ${code}. It will expire in 5 minutes.`,
-    });
-
+    to: email,
+    subject: 'Your verification code',
+    html, 
+  });
     return { message: 'OTP sent to your email' };
   }
 
@@ -69,10 +70,10 @@ async register(dto: RegisterDto) {
 
   const newUser = await this.prisma.user.create({
     data: {
-      fullName: dto.fullName,
+      name: dto.name,
       email: dto.email,
       password: hashedPassword,
-      role: dto.role,
+      emailVerified: true,
     },
   });
 
@@ -140,9 +141,7 @@ async register(dto: RegisterDto) {
       throw new BadRequestException('Old password is incorrect');
     }
 
-    if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException("Passwords don't match");
-    }
+ 
 
     const hashed = await bcrypt.hash(dto.newPassword, parseInt(process.env.SALT_ROUND!) );
     await this.prisma.user.update({
@@ -155,30 +154,62 @@ async register(dto: RegisterDto) {
 
 
 // forget and reset password 
-  async requestResetCode(dto: RequestResetCodeDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user) throw new NotFoundException('User not found');
-     if(!user.isActive){
-      throw new BadRequestException('User is blocked!');
-    }
+  // async requestResetCode(dto: RequestResetCodeDto) {
+  //   const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  //   if (!user) throw new NotFoundException('User not found');
+  //    if(!user.isActive){
+  //     throw new BadRequestException('User is blocked!');
+  //   }
 
 
-    const code = generateOtpCode();
-    const hashedCode = await hashOtpCode(code);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  //   const code = generateOtpCode();
+  //   const hashedCode = await hashOtpCode(code);
+  //   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await this.prisma.otpCode.create({
-      data: { email: dto.email, code: hashedCode, expiresAt },
-    });
+  //   await this.prisma.otpCode.create({
+  //     data: { email: dto.email, code: hashedCode, expiresAt },
+  //   });
 
-    await this.mailerService.sendMail({
-      to: dto.email,
-      subject: 'Reset Password Code',
-      text: `Your OTP code is ${code}. It will expire in 5 minutes.`,
-    });
+  //   await this.mailerService.sendMail({
+  //     to: dto.email,
+  //     subject: 'Reset Password Code',
+  //     text: `Your OTP code is ${code}. It will expire in 5 minutes.`,
+  //   });
 
-    return { message: 'Reset code sent' };
+  //   return { message: 'Reset code sent' };
+  // }
+
+  // forget and reset password 
+async requestResetCode(dto: RequestResetCodeDto) {
+  const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  if (!user) throw new NotFoundException('User not found');
+  if (!user.isActive) {
+    throw new BadRequestException('User is blocked!');
   }
+
+  // Generate OTP
+  const code = generateOtpCode(); // make sure this generates 6 digits
+  const hashedCode = await hashOtpCode(code);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+  // Save OTP to DB
+  await this.prisma.otpCode.create({
+    data: { email: dto.email, code: hashedCode, expiresAt },
+  });
+
+  // Generate HTML template
+  const html = await this.mailTemplatesService.getResetPasswordOtpTemplate(code, 5);
+
+  // Send email
+  await this.mailerService.sendMail({
+    to: dto.email,
+    subject: 'Reset Password Code',
+    html, // send HTML instead of plain text
+  });
+
+  return { message: 'Reset code sent' };
+}
+
 
   async verifyResetCode(dto: VerifyResetCodeDto) {
     return verifyOtp(this.prisma,dto.email, dto.code);

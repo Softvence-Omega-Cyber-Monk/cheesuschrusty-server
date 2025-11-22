@@ -25,11 +25,9 @@ export async function getTokens(
   return { access_token, refresh_token };
 }
 
-
 export function generateOtpCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 100000–999999
 }
-
 
 export async function hashOtpCode(code: string) {
   return bcrypt.hash(code, parseInt(process.env.SALT_ROUND!));

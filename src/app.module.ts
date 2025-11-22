@@ -8,6 +8,7 @@ import { UserModule } from './module/user/user.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { SeederService } from './seeder/seeder.service';
 // import { QuoteModule } from './module/quote/quote.module';
+import { MailModule } from './module/mail/mail.module';
 
 
 
@@ -29,6 +30,7 @@ import { SeederService } from './seeder/seeder.service';
     PrismaModule,
     AuthModule,
     UserModule,
+    MailModule,
     // QuoteModule,
   ],
   controllers: [AppController],

@@ -1,6 +1,6 @@
 import { Body, Controller, HttpStatus, Patch, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterDto, RequestOtpBodyDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import sendResponse from '../utils/sendResponse';
 import { Public } from 'src/common/decorators/public.decorators';
@@ -11,6 +11,7 @@ import {
 } from './dto/forget-reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Request, Response } from 'express';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,8 +20,8 @@ export class AuthController {
 // register 
   @Public()
   @Post('request-register-otp')
-  async requestRegisterOtp(@Body('email') email: string, @Res() res: Response) {
-    const result = await this.authService.requestRegisterOtp(email);
+  async requestRegisterOtp(@Body() dto: RequestOtpBodyDto, @Res() res: Response) {
+    const result = await this.authService.requestRegisterOtp(dto.email);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
@@ -59,8 +60,8 @@ export class AuthController {
   // refresh token 
   @Public()
   @Post('refresh-token')
-  async refreshToken(@Body('refreshToken') token: string, @Res() res: Response) {
-    const result = await this.authService.refreshTokens(token);
+  async refreshToken(@Body() dto: RefreshTokenDto, @Res() res: Response) {
+    const result = await this.authService.refreshTokens(dto.refreshToken);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,

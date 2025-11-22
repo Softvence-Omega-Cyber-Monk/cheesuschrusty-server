@@ -20,11 +20,11 @@ export class VerifyResetCodeDto {
   email: string;
 
   @ApiProperty({
-    example: '1234',
+    example: '123456',
     description: '4-digit reset code sent to the user\'s email',
   })
   @IsString()
-  @Length(4, 4, { message: 'Code must be 4 characters' })
+  @Length(6, 6, { message: 'Code must be 6 characters' })
   code: string;
 }
 
