@@ -4,16 +4,27 @@ enum Role {
   SUPER_ADMIN
 }
 
+enum Difficulty {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum LessonType {
+  READING
+  WRITING
+  LISTENING
+  SPEAKING
+}
+
 enum SubscriptionPlan {
   FREE
   PRO
 }
 
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
 
 model User {
   id                  String            @id @default(uuid())
@@ -22,116 +33,125 @@ model User {
   password            String?           // null for future social login
   name                String?
   avatar              String?
-  gender              Gender?
   isActive            Boolean           @default(true)
   role                Role              @default(USER)
-  subscriptionPlan    SubscriptionPlan  @default(FREE)
-  proExpiresAt        DateTime?         // null = never had Pro or expired
+  // Profile Settings
+  nativeLang      String    @default("English")
+  targetLang      String    @default("Italian")
+  currentLevel    Difficulty @default(A1)
+
+  // Gamification fields
+  xp              Int       @default(0)
   currentStreak       Int               @default(0)
   longestStreak       Int               @default(0)
   lastPracticeDate    DateTime?
   totalMinutesStudied Int               @default(0)
   wordsLearned        Int               @default(0)
   lessonsCompleted    Int               @default(0)
-  targetLanguage      String            @default("Italian")
-  nativeLanguage      String            @default("English")
   dailyGoalMinutes    Int               @default(20)
   timezone            String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
-
   // Relations
-  progress            SkillProgress[]
-  flashcardReviews    FlashcardReview[]
-  practiceSessions    PracticeSession[]
+  lessonProgress  UserLessonProgress[]
+  flashcardProgress     FlashcardProgress[]
   notifications       UserNotification[]
   studyPlan           StudyPlan?
-  aiUsage             AiUsage[]
   subscriptions       Subscription[]
   supportTickets      SupportTicket[]
 
   @@map("users")
 }
 
-model SkillProgress {
-  id           String   @id @default(uuid())
-  userId       String
-  skill        String   // "reading" | "listening" | "writing" | "speaking"
-  level        String   // e.g., "B1", "B1+", "B2"
-  score        Int      // 0–100
-  totalXp      Int      @default(0)
-  exercisesDone Int     @default(0)
-  updatedAt    DateTime @updatedAt
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, skill])
-  @@map("skill_progress")
+model Lesson {
+  id          Int        @id @default(autoincrement())
+  
+  // METADATA (For filtering and display)
+  type        LessonType // READING, LISTENING, SPEAKING, WRITING
+  difficulty  Difficulty // B1, A2, etc.
+  
+  // THE INPUT: The exact instruction sent to the AI
+  prompt      String     @db.Text // e.g., "Generate a B1 level reading passage about a restaurant..."
+  
+  // THE OUTPUT: The structured lesson content returned by the AI
+  // Contains passage/dialogue, questions, options, and answers.
+  content     Json       
+  
+  // STATUS
+  isPublished Boolean    @default(true) // Admin approval status
+  
+  createdAt   DateTime   @default(now())
+  
+  // Relations
+  userProgress UserLessonProgress[]
 }
 
-model PracticeSession {
-  id           String   @id @default(uuid())
-  userId       String
-  skill        String
-  startedAt    DateTime
-  endedAt      DateTime?
-  duration     Int?     // minutes
-  exercises    Int
-  correct      Int
-  score        Float?
-  aiGenerated  Boolean  @default(true)
-  createdAt    DateTime @default(now())
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+// --------------------------------------
+// 3. TRACKING (Making sure content is unique)
+// --------------------------------------
 
-  @@map("practice_sessions")
+model UserLessonProgress {
+  id          Int      @id @default(autoincrement())
+  
+  userId  String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  lessonId    Int
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  
+  score       Int?     // e.g. 80% accuracy
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId]) // Prevents duplicate records for same lesson
 }
 
-model Flashcard {
-  id           String   @id @default(uuid())
-  front        String
-  back         String
-  deckId       String
-  difficulty   String   // "beginner" | "intermediate" | "advanced"
-  category     String?
-  createdAt    DateTime @default(now())
 
-  deck         FlashcardDeck @relation(fields: [deckId], references: [id])
-  reviews      FlashcardReview[]
 
-  @@map("flashcards")
+// --------------------------------------
+// 3. FLASHCARDS (Static Content)
+// --------------------------------------
+
+model Deck {
+  id          Int       @id @default(autoincrement())
+  title       String    // "Top 100 Verbs"
+  description String?
+  difficulty  Difficulty
+  category    String    // "Grammar", "Vocabulary"
+  
+  cards       Card[]
+  
+  createdAt   DateTime  @default(now())
 }
 
-model FlashcardDeck {
-  id           String       @id @default(uuid())
-  title        String
-  description  String?
-  status       String       @default("draft") // draft | published
-  difficulty   String
-  category     String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  flashcards   Flashcard[]
-
-  @@map("flashcard_decks")
+model Card {
+  id          Int       @id @default(autoincrement())
+  deckId      Int
+  deck        Deck      @relation(fields: [deckId], references: [id])
+  
+  frontText   String    // "Ciao"
+  backText    String    // "Hello"
+  audioUrl    String?   // Optional: If you pre-generate audio for cards
+  
+  // Users tracking this card
+  progress    FlashcardProgress[]
 }
 
-model FlashcardReview {
-  id            String   @id @default(uuid())
-  userId        String
-  flashcardId   String
-  easeFactor    Float    @default(2.5)
-  interval      Int      @default(1)    // days
-  repetitions   Int      @default(0)
-  nextReviewAt  DateTime
-  quality       Int      // 0–5 (Anki style)
-  reviewedAt    DateTime @default(now())
+// Spaced Repetition Logic needs this table
+model FlashcardProgress {
+  id            Int       @id @default(autoincrement())
+  userId  String
+  user          User      @relation(fields: [userId], references: [id])
+  cardId        Int
+  card          Card      @relation(fields: [cardId], references: [id])
+  
+  status        String    // "New", "Learning", "Review", "Mastered"
+  easeFactor    Float     @default(2.5) // For SM-2 Algorithm
+  interval      Int       @default(0)   // Days until next review
+  nextReview    DateTime  @default(now())
 
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  flashcard     Flashcard    @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
-
-  @@map("flashcard_reviews")
+  @@unique([userId, cardId]) // One progress record per card per user
 }
 
 model StudyPlan {
@@ -165,18 +185,7 @@ model Subscription {
   @@map("subscriptions")
 }
 
-model AiUsage {
-  id         String   @id @default(uuid())
-  userId     String
-  date       DateTime @default(now()) @db.Date
-  generations Int     @default(0)
-  tokensUsed  Int     @default(0)
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-  @@map("ai_usage")
-}
 
 model SupportTicket {
   id         String   @id @default(uuid())
@@ -207,15 +216,3 @@ model UserNotification {
   @@map("user_notifications")
 }
 
-// Optional: For future admin settings (A/B testing prompts, etc.)
-model AdminPrompt {
-  id        String   @id @default(uuid())
-  skill     String   // "reading_question" | "speaking_feedback" | etc.
-  name      String   // e.g., "Prompt V1 – Friendly", "Prompt V2 – Strict"
-  prompt    String
-  isActive  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("admin_prompts")
-}

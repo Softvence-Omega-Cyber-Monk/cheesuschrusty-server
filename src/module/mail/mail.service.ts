@@ -27,7 +27,7 @@ export class MailService {
     }) {
         // Destructure attachments again
         const { to, subject, html, from, attachments } = options;
-        const senderAddress = from || `B1 Italian<${process.env.EMAIL_USER}>`;
+        const senderAddress = from || `B1 Italian<${process.env.SMTP_USER}>`;
 
         try {
             const info = await this.transporter.sendMail({
