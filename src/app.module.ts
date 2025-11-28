@@ -11,6 +11,7 @@ import { MailModule } from './module/mail/mail.module';
 import { LessionModule } from './module/lession/lession.module';
 import { SeederModule } from './seeder/seeder.module';
 import { SubscriptionPlanModule } from './module/subscription-plan/subscription-plan.module';
+import { SubscriptionModule } from './module/subscription/subscription.module';
 
 
 
@@ -35,7 +36,8 @@ import { SubscriptionPlanModule } from './module/subscription-plan/subscription-
     MailModule,
     LessionModule,
     SeederModule,
-    SubscriptionPlanModule
+    SubscriptionPlanModule,
+    SubscriptionModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

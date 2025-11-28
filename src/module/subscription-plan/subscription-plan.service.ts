@@ -17,7 +17,15 @@ export class SubscriptionPlanService {
     });
   }
 
-
+  async getPlanByAlias(alias: string): Promise<Plan> {
+    const plan = await this.prisma.plan.findUnique({
+      where: { alias },
+    });
+    if (!plan) {
+      throw new NotFoundException(`Plan with alias '${alias}' not found.`);
+    }
+    return plan;
+  }
 
   /**
    * ADMIN: Updates the configuration of an existing plan.

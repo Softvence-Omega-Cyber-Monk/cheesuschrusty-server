@@ -6,7 +6,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { PrismaService } from './prisma/prisma.service';
 import { setupSwagger } from './swagger/swagger.setup';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -28,6 +28,15 @@ async function bootstrap() {
     new RolesGuard(reflector),
   );
 
+app.use('/subscriptions/webhook', (req, res, next) => {
+  bodyParser.raw({ type: 'application/json' })(req, res, (err) => {
+    if (err) return next(err);
+    req.rawBody = req.body;
+    next();
+  });
+});
+
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -38,6 +47,10 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());
+
+
+
+
 
  setupSwagger(app);
   await app.listen(process.env.PORT ?? 3000);
