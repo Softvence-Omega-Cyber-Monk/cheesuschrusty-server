@@ -18,7 +18,7 @@ export class SeederService implements OnApplicationBootstrap {
     const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD as string;
 
     const supperAdmin = await this.prisma.user.findFirst({
-      where: { role: Role.ADMIN},
+      where: { role: Role.SUPER_ADMIN},
     });
 
     if ( supperAdmin) {
@@ -32,7 +32,7 @@ export class SeederService implements OnApplicationBootstrap {
       data: {
         email: superAdminEmail,
         password: hashedPassword,
-        role: Role.ADMIN,
+        role: Role.SUPER_ADMIN,
       },
     });
 
