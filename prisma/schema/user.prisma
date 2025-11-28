@@ -187,6 +187,31 @@ model Subscription {
 }
 
 
+model Plan {
+  id            Int      @id @default(autoincrement())
+  
+  // Unique code for your backend logic
+  alias         String   @unique 
+  
+  name          String   // "Pro Monthly"
+  
+  // 🎯 UPDATED: Description is now an array of strings
+  description   String[] // List of features (e.g., ["Unlimited lessons", "Ad-free", ...])
+  
+  // STRIPE CONFIGURATION - Admin editable
+  stripePriceId String   // The ID from Stripe
+  price         Float    // The display price (e.g., 9.99 or 99.99)
+  
+  // CRITICAL FOR FRONTEND & LOGIC
+  interval      String   // "month" or "year" 
+  
+  currency      String   @default("USD")
+  isActive      Boolean  @default(true) 
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 
 model SupportTicket {
   id         String   @id @default(uuid())
