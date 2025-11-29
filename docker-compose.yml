@@ -1,3 +1,4 @@
+name: chessus-server
 version: '3.9'
 
 services:
@@ -16,3 +17,4 @@ services:
 
 volumes:
   postgres_data:
+   name: chessus-server_postgres_data

@@ -7,8 +7,11 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './module/user/user.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { SeederService } from './seeder/seeder.service';
-// import { QuoteModule } from './module/quote/quote.module';
 import { MailModule } from './module/mail/mail.module';
+import { LessionModule } from './module/lession/lession.module';
+import { SeederModule } from './seeder/seeder.module';
+import { SubscriptionPlanModule } from './module/subscription-plan/subscription-plan.module';
+import { SubscriptionModule } from './module/subscription/subscription.module';
 
 
 
@@ -31,7 +34,10 @@ import { MailModule } from './module/mail/mail.module';
     AuthModule,
     UserModule,
     MailModule,
-    // QuoteModule,
+    LessionModule,
+    SeederModule,
+    SubscriptionPlanModule,
+    SubscriptionModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

@@ -2,7 +2,6 @@
 
 import {
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -11,7 +10,10 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Gender } from '@prisma/client';
+import { Difficulty } from '@prisma/client';
+
+
+const difficultyLevels = Object.values(Difficulty);
 
 export class RequestOtpBodyDto {
   @ApiProperty({
@@ -49,22 +51,17 @@ export class RegisterDto {
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   password: string;
 
-  @ApiPropertyOptional({
-    enum: Gender,
-    example: 'MALE',
-    description: 'Used for personalized TTS voice selection',
+  @ApiProperty({
+    example: 'B1',
+    description: 'User\'s self-assessed current proficiency level.',
+    enum: Difficulty,
   })
-  @IsOptional()
-  @IsEnum(Gender, { message: 'Gender must be MALE, FEMALE or OTHER' })
-  gender?: Gender;
-
-  @ApiPropertyOptional({
-    example: 'Spanish',
-    description: 'User native language (default: English)',
-  })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Level is required for registration' })
   @IsString()
-  nativeLanguage?: string;
+  @IsIn(difficultyLevels, {
+    message: 'Current level must be one of: A1, A2, B1, B2, C1, C2',
+  })
+  currentLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
   @ApiPropertyOptional({
     example: 30,
