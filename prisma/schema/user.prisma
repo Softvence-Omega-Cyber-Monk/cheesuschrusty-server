@@ -31,10 +31,11 @@ model User {
   id                  String            @id @default(uuid())
   email               String            @unique
   emailVerified       Boolean           @default(false)
-  password            String?           // null for future social login
+  password            String?         
   name                String?
   avatar              String?
   isActive            Boolean           @default(true)
+  hasUsedTrial          Boolean           @default(false)
   role                Role              @default(USER)
   // Profile Settings
   nativeLang      String    @default("English")
@@ -176,6 +177,7 @@ model Subscription {
   userId     String @unique
   stripeCustomerId String?
   stripeSubscriptionId String?
+  planAlias            String?
   plan            SubscriptionPlan
   status          String   // active, canceled, past_due, etc.
   currentPeriodStart DateTime
