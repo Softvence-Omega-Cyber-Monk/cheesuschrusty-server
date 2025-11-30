@@ -66,28 +66,88 @@ model User {
   @@map("users")
 }
 
+// ----------------------------------------------------
+// CORE LESSON ENTITIES (FINAL ACCEPTED STRUCTURE)
+// ----------------------------------------------------
+
+// 1. Lesson: The Parent Container. 
+// This is the record created initially by the admin (Step 1).
+
+enum AIProvider {
+    OPENAI
+    GROK
+}
+
+
+enum SubCategoryType {
+  // Reading
+  MAIN_PASSAGE // Used for the single activity in a READING lesson
+
+  // Listening
+  DIALOGUE_SEQUENCING
+  DICTATION_EXERCISE
+  AUDIO_COMPREHENSION
+
+  // Writing
+  GRAMMAR_PRACTICE
+  COMPLETE_THE_SENTENCES
+  SHORT_ESSAY
+
+  // Speaking
+  READING_ALOUD
+  CONVERSATION_PRACTICE
+  PRONUNCIATION_PRACTICE
+}
+
+
+
 
 model Lesson {
-  id          Int        @id @default(autoincrement())
+  id              Int                @id @default(autoincrement())
   
-  // METADATA (For filtering and display)
-  type        LessonType // READING, LISTENING, SPEAKING, WRITING
-  difficulty  Difficulty // B1, A2, etc.
+  // METADATA (Set by Admin at creation)
+  title           String             // e.g., "B2 Job Interview Practice"
+  type            LessonType         // READING, LISTENING, SPEAKING, WRITING
+  difficulty      Difficulty
   
-  // THE INPUT: The exact instruction sent to the AI
-  prompt      String     @db.Text // e.g., "Generate a B1 level reading passage about a restaurant..."
+  // The Admin's overall provider choice for this lesson set
+  provider        AIProvider? 
   
-  // THE OUTPUT: The structured lesson content returned by the AI
-  // Contains passage/dialogue, questions, options, and answers.
-  content     Json       
-  
-  // STATUS
-  isPublished Boolean    @default(true) // Admin approval status
-  
-  createdAt   DateTime   @default(now())
+  // Status: True only when all required QuestionSets are saved
+  isPublished     Boolean            @default(false) 
+  createdAt       DateTime           @default(now())
   
   // Relations
-  userProgress UserLessonProgress[]
+  questionSets    QuestionSet[]      // One-to-Many link to the content pieces
+  userProgress    UserLessonProgress[]
+  
+  @@map("lessons")
+}
+
+// 2. QuestionSet: The Child Content. (Formerly LessonActivity)
+// This is the record created in sequential steps (Steps 2, 3, 4, etc.).
+model QuestionSet {
+  id              Int          @id @default(autoincrement())
+  
+  // Link back to the main lesson container
+  lessonId        Int
+  lesson          Lesson       @relation(fields: [lessonId], references: [id])
+  
+  // IDENTIFIER: The specific sub-category name or null for Reading
+  // Example types: "Dialogue Sequencing", "Pronunciation Practice", or "Reading Passage" (for reading)
+  subCategoryType SubCategoryType      
+  
+  // THE INPUT: The exact, specific prompt used to generate this content piece
+  prompt          String       @db.Text 
+  
+  // THE OUTPUT: The structured question set content for THIS SUB-ACTIVITY
+  content         Json         
+  
+  createdAt       DateTime     @default(now())
+  
+  // Optional: A unique constraint to ensure a lesson doesn't accidentally save two of the same sub-category
+  @@unique([lessonId, subCategoryType]) 
+  @@map("question_sets")
 }
 
 

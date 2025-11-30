@@ -7,15 +7,15 @@ import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator'; 
 import { Role } from '@prisma/client';
-import { CreateLessonDto } from './dto/create-lesson.dto';
 import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { LessionService } from './lession.service';
 import sendResponse from '../utils/sendResponse';
+import { CreateLessonContainerDto } from './dto/create-lesson.dto';
 
 @ApiTags('Lesson Content Management (Super Admin, Content Manager)')
 @Controller('admin/lessons')
-@Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER) // Restrict access to Admins only
+@Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER)
 export class LessonAdminController {
   constructor(private readonly lessonService: LessionService) {}
   
@@ -30,11 +30,11 @@ export class LessonAdminController {
 
   // --- 1. CREATE (POST /admin/lessons) ---
   @Post()
-  @ApiOperation({ summary: ' Save a new AI-generated lesson after approval.' })
-  @ApiBody({ type: CreateLessonDto })
+  @ApiOperation({ summary: ' Create the lession container' })
+  @ApiBody({ type: CreateLessonContainerDto })
   @ApiResponse({ status: 201, description: 'Lesson created successfully.' })
-  async createLesson(@Body() dto: CreateLessonDto, @Res() res: Response) {
-    const newLesson = await this.lessonService.createLesson(dto);
+  async createLesson(@Body() dto: CreateLessonContainerDto, @Res() res: Response) {
+    const newLesson = await this.lessonService.createLessonContainer(dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
