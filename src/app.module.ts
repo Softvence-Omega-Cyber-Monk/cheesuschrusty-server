@@ -13,6 +13,7 @@ import { SeederModule } from './seeder/seeder.module';
 import { SubscriptionPlanModule } from './module/subscription-plan/subscription-plan.module';
 import { SubscriptionModule } from './module/subscription/subscription.module';
 import { QuestionSetModule } from './module/question-set/question-set.module';
+import { FlashcardModule } from './module/flashcard/flashcard.module';
 
 
 
@@ -39,7 +40,8 @@ import { QuestionSetModule } from './module/question-set/question-set.module';
     SeederModule,
     SubscriptionPlanModule,
     SubscriptionModule,
-    QuestionSetModule
+    QuestionSetModule,
+    FlashcardModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

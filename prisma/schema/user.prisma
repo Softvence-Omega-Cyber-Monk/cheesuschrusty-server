@@ -21,64 +21,6 @@ enum LessonType {
   SPEAKING
 }
 
-enum SubscriptionPlan {
-  FREE
-  PRO
-}
-
-
-model User {
-  id                  String            @id @default(uuid())
-  email               String            @unique
-  emailVerified       Boolean           @default(false)
-  password            String?         
-  name                String?
-  avatar              String?
-  isActive            Boolean           @default(true)
-  hasUsedTrial          Boolean           @default(false)
-  role                Role              @default(USER)
-  // Profile Settings
-  nativeLang      String    @default("English")
-  targetLang      String    @default("Italian")
-  currentLevel    Difficulty @default(A1)
-
-  // Gamification fields
-  xp              Int       @default(0)
-  currentStreak       Int               @default(0)
-  longestStreak       Int               @default(0)
-  lastPracticeDate    DateTime?
-  totalMinutesStudied Int               @default(0)
-  wordsLearned        Int               @default(0)
-  lessonsCompleted    Int               @default(0)
-  dailyGoalMinutes    Int               @default(20)
-  timezone            String?
-  stripeCustomerId        String?             @unique 
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  // Relations
-  lessonProgress  UserLessonProgress[]
-  flashcardProgress     FlashcardProgress[]
-  notifications       UserNotification[]
-  studyPlan           StudyPlan?
-  subscriptions       Subscription[]
-  supportTickets      SupportTicket[]
-
-  @@map("users")
-}
-
-// ----------------------------------------------------
-// CORE LESSON ENTITIES (FINAL ACCEPTED STRUCTURE)
-// ----------------------------------------------------
-
-// 1. Lesson: The Parent Container. 
-// This is the record created initially by the admin (Step 1).
-
-enum AIProvider {
-    OPENAI
-    GROK
-}
-
-
 enum SubCategoryType {
   // Reading
   MAIN_PASSAGE // Used for the single activity in a READING lesson
@@ -99,194 +41,279 @@ enum SubCategoryType {
   PRONUNCIATION_PRACTICE
 }
 
+// NEW ENUM for Flashcard Session Status
+enum SessionStatus {
+  ACTIVE // Session is currently being studied
+  PAUSED // Session was started but the user navigated away (can be resumed)
+  FINISHED // Session queue is empty and the session is complete (used for counting totals)
+}
 
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
 
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  emailVerified Boolean    @default(false)
+  password      String?
+  name          String?
+  avatar        String?
+  isActive      Boolean    @default(true)
+  hasUsedTrial  Boolean    @default(false)
+  role          Role       @default(USER)
+  // Profile Settings
+  nativeLang    String     @default("English")
+  targetLang    String     @default("Italian")
+  currentLevel  Difficulty @default(A1)
+
+  // Gamification fields
+  xp                      Int                      @default(0)
+  currentStreak           Int                      @default(0)
+  longestStreak           Int                      @default(0)
+  lastPracticeDate        DateTime?
+  totalMinutesStudied     Int                      @default(0)
+  wordsLearned            Int                      @default(0)
+  lessonsCompleted        Int                      @default(0)
+  dailyGoalMinutes        Int                      @default(20)
+  timezone                String?
+  stripeCustomerId        String?                  @unique
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  // Relations
+  lessonProgress          UserLessonProgress[]
+  flashcardProgress       FlashcardProgress[]
+  notifications           UserNotification[]
+  studyPlan               StudyPlan?
+  subscriptions           Subscription[]
+  supportTickets          SupportTicket[]
+  activeFlashcardSessions ActiveFlashcardSession[] @relation("UserSessions")
+
+  @@map("users")
+}
+
+// ----------------------------------------------------
+// CORE LESSON ENTITIES (FINAL ACCEPTED STRUCTURE)
+// ----------------------------------------------------
+
+// 1. Lesson: The Parent Container. 
+// This is the record created initially by the admin (Step 1).
+
+enum AIProvider {
+  OPENAI
+  GROK
+}
 
 model Lesson {
-  id              Int                @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   // METADATA (Set by Admin at creation)
-  title           String             // e.g., "B2 Job Interview Practice"
-  type            LessonType         // READING, LISTENING, SPEAKING, WRITING
-  difficulty      Difficulty
-  
+  title      String // e.g., "B2 Job Interview Practice"
+  type       LessonType // READING, LISTENING, SPEAKING, WRITING
+  difficulty Difficulty
+
   // The Admin's overall provider choice for this lesson set
-  provider        AIProvider? 
-  
+  provider AIProvider?
+
   // Status: True only when all required QuestionSets are saved
-  isPublished     Boolean            @default(false) 
-  createdAt       DateTime           @default(now())
-  
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
   // Relations
-  questionSets    QuestionSet[]      // One-to-Many link to the content pieces
-  userProgress    UserLessonProgress[]
-  
+  questionSets QuestionSet[] // One-to-Many link to the content pieces
+  userProgress UserLessonProgress[]
+
   @@map("lessons")
 }
 
 // 2. QuestionSet: The Child Content. (Formerly LessonActivity)
 // This is the record created in sequential steps (Steps 2, 3, 4, etc.).
 model QuestionSet {
-  id              Int          @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   // Link back to the main lesson container
-  lessonId        Int
-  lesson          Lesson       @relation(fields: [lessonId], references: [id])
-  
+  lessonId Int
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+
   // IDENTIFIER: The specific sub-category name or null for Reading
   // Example types: "Dialogue Sequencing", "Pronunciation Practice", or "Reading Passage" (for reading)
-  subCategoryType SubCategoryType      
-  
+  subCategoryType SubCategoryType
+
   // THE INPUT: The exact, specific prompt used to generate this content piece
-  prompt          String       @db.Text 
-  
+  prompt String @db.Text
+
   // THE OUTPUT: The structured question set content for THIS SUB-ACTIVITY
-  content         Json         
-  
-  createdAt       DateTime     @default(now())
-  
+  content Json
+
+  createdAt DateTime @default(now())
+
   // Optional: A unique constraint to ensure a lesson doesn't accidentally save two of the same sub-category
-  @@unique([lessonId, subCategoryType]) 
+  @@unique([lessonId, subCategoryType])
   @@map("question_sets")
 }
-
 
 // --------------------------------------
 // 3. TRACKING (Making sure content is unique)
 // --------------------------------------
 
 model UserLessonProgress {
-  id          Int      @id @default(autoincrement())
-  
-  userId  String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  lessonId    Int
-  lesson      Lesson   @relation(fields: [lessonId], references: [id])
-  
-  score       Int?     // e.g. 80% accuracy
+  id Int @id @default(autoincrement())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  lessonId Int
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+
+  score       Int? // e.g. 80% accuracy
   completedAt DateTime @default(now())
 
   @@unique([userId, lessonId]) // Prevents duplicate records for same lesson
 }
 
-
-
 // --------------------------------------
-// 3. FLASHCARDS (Static Content)
+// FLASHCARDS (STATIC CONTENT)
 // --------------------------------------
 
-model Deck {
-  id          Int       @id @default(autoincrement())
-  title       String    // "Top 100 Verbs"
-  description String?
-  difficulty  Difficulty
-  category    String    // "Grammar", "Vocabulary"
-  
-  cards       Card[]
-  
-  createdAt   DateTime  @default(now())
+// Renamed from Deck to FlashcardCategory for better domain clarity
+model FlashcardCategory {
+  id         Int        @id @default(autoincrement())
+  title      String // "Basic Vocabulary", "Verbs Conjugation"
+  difficulty Difficulty // A card category might span multiple difficulties, but this gives a general anchor 
+  cards      Card[]
+
+  createdAt DateTime @default(now())
+
+  @@map("flashcard_categories")
 }
 
 model Card {
-  id          Int       @id @default(autoincrement())
-  deckId      Int
-  deck        Deck      @relation(fields: [deckId], references: [id])
-  
-  frontText   String    // "Ciao"
-  backText    String    // "Hello"
-  audioUrl    String?   // Optional: If you pre-generate audio for cards
-  
+  id         Int               @id @default(autoincrement())
+  // Renamed deckId to categoryId
+  categoryId Int
+  category   FlashcardCategory @relation(fields: [categoryId], references: [id])
+
+  frontText String // "Ciao"
+  backText  String // "Hello"
+
   // Users tracking this card
-  progress    FlashcardProgress[]
+  progress FlashcardProgress[]
+
+  @@map("cards")
 }
 
 // Spaced Repetition Logic needs this table
 model FlashcardProgress {
-  id            Int       @id @default(autoincrement())
-  userId  String
-  user          User      @relation(fields: [userId], references: [id])
-  cardId        Int
-  card          Card      @relation(fields: [cardId], references: [id])
-  
-  status        String    // "New", "Learning", "Review", "Mastered"
-  easeFactor    Float     @default(2.5) // For SM-2 Algorithm
-  interval      Int       @default(0)   // Days until next review
-  nextReview    DateTime  @default(now())
+  id     Int    @id @default(autoincrement())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  cardId Int
+  card   Card   @relation(fields: [cardId], references: [id])
 
-  @@unique([userId, cardId]) // One progress record per card per user
+  // SRS Fields (SM-2 Algorithm)
+  easeFactor  Float    @default(2.5) // The difficulty multiplier
+  interval    Int      @default(0) // Days until next review. Used to determine 'Mastered' (>=30 days)
+  nextReview  DateTime @default(now())
+  repetitions Int      @default(0) // Successful reviews in a row (Grade 2 or 3)
+
+  // NEW: Required for dashboard "Total Cards Studied" and "Average Score" metrics
+  totalReviews Int @default(0) // Total number of times this card has been graded (0, 1, 2, or 3)
+
+  @@unique([userId, cardId])
+  @@map("flashcard_progress")
+}
+
+// NEW TABLE: Tracks the temporary state of a current session, 
+// and stores the history of completed sessions for dashboard totals.
+model ActiveFlashcardSession {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserSessions", fields: [userId], references: [id])
+
+  categoryName String // The title of the category being studied (e.g., "Basic Vocabulary")
+
+  // Status: ACTIVE (in progress), PAUSED (user left), or FINISHED (queue empty)
+  status SessionStatus @default(ACTIVE)
+
+  // The temporary state required to resume a session (remaining cards, current scores)
+  sessionData Json // Example: { remainingCardIds: [4, 5, 8], correctCount: 5, incorrectCount: 2 }
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  dateCompleted DateTime? // Set when status is 'FINISHED'
+
+  @@map("active_flashcard_sessions")
 }
 
 model StudyPlan {
-  id           String    @id @default(uuid())
-  userId       String    @unique
-  goalMinutes  Int
-  daysPerWeek  Int
-  focusAreas   String[]  // ["vocabulary", "speaking", etc.]
-  generatedAt  DateTime  @default(now())
-  expiresAt    DateTime
-  activities   Json      // AI-generated daily tasks
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  goalMinutes Int
+  daysPerWeek Int
+  focusAreas  String[] // ["vocabulary", "speaking", etc.]
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime
+  activities  Json // AI-generated daily tasks
 
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("study_plans")
 }
 
 model Subscription {
-  id              String   @id @default(uuid())
-  userId     String @unique
-  stripeCustomerId String?
+  id                   String           @id @default(uuid())
+  userId               String           @unique
+  stripeCustomerId     String?
   stripeSubscriptionId String?
   planAlias            String?
-  plan            SubscriptionPlan
-  status          String   // active, canceled, past_due, etc.
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
-  createdAt       DateTime @default(now())
+  plan                 SubscriptionPlan
+  status               String // active, canceled, past_due, etc.
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  createdAt            DateTime         @default(now())
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
 
-
 model Plan {
-  id            Int      @id @default(autoincrement())
-  
+  id Int @id @default(autoincrement())
+
   // Unique code for your backend logic
-  alias         String   @unique 
-  
-  name          String   // "Pro Monthly"
-  
+  alias String @unique
+
+  name String // "Pro Monthly"
+
   // 🎯 UPDATED: Description is now an array of strings
-  description   String[] // List of features (e.g., ["Unlimited lessons", "Ad-free", ...])
-  
+  description String[] // List of features (e.g., ["Unlimited lessons", "Ad-free", ...])
+
   // STRIPE CONFIGURATION - Admin editable
-  stripePriceId String   // The ID from Stripe
-  price         Float    // The display price (e.g., 9.99 or 99.99)
-  
+  stripePriceId String // The ID from Stripe
+  price         Float // The display price (e.g., 9.99 or 99.99)
+
   // CRITICAL FOR FRONTEND & LOGIC
-  interval      String   // "month" or "year" 
-  
-  currency      String   @default("USD")
-  isActive      Boolean  @default(true) 
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  interval String // "month" or "year" 
+
+  currency String  @default("USD")
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-
 model SupportTicket {
-  id         String   @id @default(uuid())
-  userId     String
-  subject    String
-  message    String
-  status     String   @default("open") // open, in_progress, resolved
-  priority   String   @default("medium")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String
+  subject   String
+  message   String
+  status    String   @default("open") // open, in_progress, resolved
+  priority  String   @default("medium")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("support_tickets")
 }
@@ -296,12 +323,11 @@ model UserNotification {
   userId    String
   title     String
   message   String
-  type      String   // streak | reminder | achievement
+  type      String // streak | reminder | achievement
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notifications")
 }
-
