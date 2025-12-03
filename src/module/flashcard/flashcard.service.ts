@@ -157,7 +157,6 @@ export class FlashcardService {
 
     /**
      * Starts a new session or resumes an existing one for a given category.
-     * MODIFIED: Added logic to fallback to new, unstudied cards if no cards are due.
      */
     async startSession(userId: string, dto: StartSessionDto): Promise<StartSessionResponseDto> {
         // 1. Check for an active/paused session for this user/category (RESUME LOGIC)
@@ -253,9 +252,35 @@ export class FlashcardService {
             if (newCardIds.length > 0) {
                 this.logger.log(`Found ${newCardIds.length} new cards for the session.`);
                 cardIdsForSession = newCardIds;
-            } else {
-                // If no due cards AND no new cards, then all cards are mastered/reviewed recently
-                throw new NotFoundException('All cards in this category have been recently reviewed or mastered. Check back later!');
+            } 
+            
+            // --- C. Ultimate Fallback: Cram/Recently Reviewed Cards ---
+            if (cardIdsForSession.length === 0) {
+                this.logger.log(`No new cards found. Falling back to reviewing least recently reviewed cards (Cram Mode).`);
+                
+                // Find studied cards, ordered by nextReview date ascending (i.e., due soonest / reviewed longest ago)
+                // We remove the nextReview: { not: null } filter to resolve the TypeScript error.
+                // Ordering ASC will naturally prioritize cards where nextReview is NULL (if the DB treats null as lowest value),
+                // followed by the earliest dates, which is the desired fallback behavior.
+                const allStudiedProgressRecords = await this.prisma.flashcardProgress.findMany({
+                    where: {
+                        userId,
+                        cardId: { in: categoryCardIds },
+                    },
+                    // Order by nextReview asc, to get cards that are coming up soonest (nulls likely first)
+                    orderBy: { nextReview: 'asc' }, 
+                    take: SESSION_LIMIT,
+                });
+
+                const recentlyReviewedIds = allStudiedProgressRecords.map(p => p.cardId);
+
+                if (recentlyReviewedIds.length === 0) {
+                    // This means the category is empty of both progress and cards, or there's an internal error.
+                    throw new NotFoundException('All cards in this category have been recently reviewed or mastered. Check back later!');
+                }
+
+                this.logger.log(`Found ${recentlyReviewedIds.length} cards for "cram" session.`);
+                cardIdsForSession = recentlyReviewedIds;
             }
         }
         
@@ -280,6 +305,10 @@ export class FlashcardService {
         // Must use .find() on the local category.cards array since they hold all card details
         const firstCard = category.cards.find(c => c.id === firstCardId); 
 
+        if (!firstCard) {
+             throw new NotFoundException('The first card selected for the session could not be found.');
+        }
+
         // Fetch progress (might be null if it's a new card)
         const cardProgress = await this.prisma.flashcardProgress.findUnique({
             where: { userId_cardId: { userId, cardId: firstCardId } },
@@ -296,9 +325,9 @@ export class FlashcardService {
                 incorrectCount: 0,
             },
             currentCard: {
-                cardId: firstCard!.id,
-                frontText: firstCard!.frontText,
-                backText: firstCard!.backText,
+                cardId: firstCard.id,
+                frontText: firstCard.frontText,
+                backText: firstCard.backText,
                 currentInterval: cardProgress?.interval || 0,
             }
         };
