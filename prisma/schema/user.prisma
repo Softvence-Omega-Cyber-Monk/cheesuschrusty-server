@@ -219,7 +219,7 @@ model FlashcardProgress {
 
   // NEW: Required for dashboard "Total Cards Studied" and "Average Score" metrics
   totalReviews Int @default(0) // Total number of times this card has been graded (0, 1, 2, or 3)
-
+  totalCorrectReviews   Int      @default(0)
   @@unique([userId, cardId])
   @@map("flashcard_progress")
 }

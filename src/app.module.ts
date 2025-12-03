@@ -17,6 +17,7 @@ import { FlashcardModule } from './module/flashcard/flashcard.module';
 
 
 
+
 @Module({
   imports: [
     MailerModule.forRoot({
@@ -41,7 +42,7 @@ import { FlashcardModule } from './module/flashcard/flashcard.module';
     SubscriptionPlanModule,
     SubscriptionModule,
     QuestionSetModule,
-    FlashcardModule
+    FlashcardModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

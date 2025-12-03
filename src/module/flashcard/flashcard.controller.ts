@@ -4,10 +4,9 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { FlashcardService } from './flashcard.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
-
-// Import DTOs used by the service methods
-import { GradeCardDto, StartSessionDto } from './dto/flashcard.grading.dto';
+import { GradeCardDto, PauseSessionDto, StartSessionDto } from './dto/flashcard.grading.dto';
 import sendResponse from '../utils/sendResponse';
+import { CreateCardDto, CreateCategoryDto } from './dto/create-flashcard.dto';
 
 
 
@@ -15,6 +14,66 @@ import sendResponse from '../utils/sendResponse';
 @Controller('flashcards')
 export class FlashcardController {
   constructor(private readonly flashcardService: FlashcardService) {}
+
+
+
+
+  // ====================================================================
+  // ------------------------- CONTENT CREATION ---------------------------
+  // ====================================================================
+
+  /**
+   * Endpoint to create a new flashcard category.
+   */
+  @Post('category')
+  @Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER) // Assuming content creation is for Admins/Content Managers
+  @ApiOperation({ summary: 'ADMIN: Create a new flashcard category.' })
+  @ApiResponse({ status: 201, description: 'Category created successfully.' })
+  async createCategory(
+    @Res() res: Response,
+    @Body() dto: CreateCategoryDto,
+  ) {
+    const category = await this.flashcardService.createCategory(dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Flashcard category created successfully.',
+      data: category,
+    });
+  }
+
+  /**
+   * Endpoint to create a single card.
+   */
+  @Post('card')
+  @Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER) // Assuming content creation is for Admins/Content Managers
+  @ApiOperation({ summary: 'ADMIN: Create a single flashcard within a category.' })
+  @ApiResponse({ status: 201, description: 'Card created successfully.' })
+  @ApiResponse({ status: 404, description: 'Category not found.' })
+  async createCard(
+    @Res() res: Response,
+    @Body() dto: CreateCardDto,
+  ) {
+    const card = await this.flashcardService.createCard(dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Flashcard created successfully.',
+      data: card,
+    });
+  }
+  
+  // ====================================================================
+  // ------------------------- STUDY FLOW ---------------------------------
+  // ====================================================================
+
+
+
+
+
+
 
   /**
    * Endpoint to get the user's dashboard overview.
@@ -109,15 +168,15 @@ export class FlashcardController {
   async pauseSession(
     @Req() req: Request,
     @Res() res: Response,
-    @Body() body: { sessionId: string }, // Expected body structure
+    @Body() dto:PauseSessionDto, // Expected body structure
   ) {
     const userId = req.user!.id; 
     
-    if (!body.sessionId) {
+    if (!dto.sessionId) {
         throw new BadRequestException('Session ID is required to pause the session.');
     }
 
-    await this.flashcardService.pauseSession(userId, body.sessionId);
+    await this.flashcardService.pauseSession(userId, dto.sessionId);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,

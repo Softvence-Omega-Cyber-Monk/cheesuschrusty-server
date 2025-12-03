@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsUUID, IsString } from 'class-validator';
+import { IsInt, Min, Max, IsUUID, IsString, IsNotEmpty } from 'class-validator';
 
 /**
  * DTO for the payload when a user submits a grade for a card review.
@@ -46,4 +46,16 @@ export class StartSessionDto {
   @IsInt()
   @Min(1)
   categoryId: number;
+}
+
+
+
+export class PauseSessionDto {
+  @ApiProperty({ 
+    description: 'The unique ID of the session to be paused.',
+    example: 'uuid-1234-abcd-5678'
+  })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
 }

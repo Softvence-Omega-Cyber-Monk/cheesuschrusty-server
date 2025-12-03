@@ -8,7 +8,8 @@ import { QuestionSetService } from '../question-set/question-set.service';
 
 @Injectable()
 export class LessionService {
-    constructor(private prisma: PrismaService,private questionSet:QuestionSetService) {}
+    constructor(private prisma: PrismaService,
+        private questionSet:QuestionSetService) {}
  async createLessonContainer(dto: CreateLessonContainerDto): Promise<Lesson> {
         console.log(`Attempting to create new Lesson container: ${dto.title}`);
         
