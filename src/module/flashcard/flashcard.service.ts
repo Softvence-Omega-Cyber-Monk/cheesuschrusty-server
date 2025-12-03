@@ -1,19 +1,20 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { FlashcardOverviewResponseDto } from './dto/flashcard.overview.dto';
 import { GradeCardDto, StartSessionDto } from './dto/flashcard.grading.dto';
 import { GradeCardResponseDto, StartSessionResponseDto } from './dto/flashcard.response.dto';
-import { CreateCardDto, CreateCategoryDto } from './dto/create-flashcard.dto';
+import { CreateCardDto, CreateCategoryDto, UpdateCardDto } from './dto/create-flashcard.dto';
 
 // Define a reasonable limit for a single study session
-const SESSION_LIMIT = 2; 
+const SESSION_LIMIT = 10; 
 
 // Helper type to align with Prisma's JSON structure for sessionData
 interface SessionData {
     remainingCardIds: number[];
     correctCount: number;
     incorrectCount: number;
+    // Note: currentCardId is implied to be remainingCardIds[0] in this simplified linear flow.
 }
 
 @Injectable()
@@ -64,6 +65,132 @@ export class FlashcardService {
         });
     }
 
+// ====================================================================
+// ------------------------- CATEGORY & CARD MANAGEMENT ----------------
+// ====================================================================
+
+/**
+ * Fetch a category with all its cards.
+ */
+async getCategoryWithCards(categoryId: number) {
+    const category = await this.prisma.flashcardCategory.findUnique({
+        where: { id: categoryId },
+        include: { cards: true },
+    });
+
+    if (!category) {
+        throw new NotFoundException(`Category with ID ${categoryId} not found.`);
+    }
+
+    return category;
+}
+
+/**
+ * Update an existing card.
+ */
+async updateCard(cardId: number, dto: UpdateCardDto) {
+    const existing = await this.prisma.card.findUnique({
+        where: { id: cardId },
+    });
+
+    if (!existing) {
+        throw new NotFoundException(`Card with ID ${cardId} not found.`);
+    }
+
+    return this.prisma.card.update({
+        where: { id: cardId },
+        data: {
+            frontText: dto.frontText ?? existing.frontText,
+            backText: dto.backText ?? existing.backText,
+        },
+    });
+}
+
+/**
+ * Delete a card (cascade deletes its progress because FK is onDelete: Cascade).
+ */
+async deleteCard(cardId: number) {
+  const existing = await this.prisma.card.findUnique({ where: { id: cardId } });
+
+  if (!existing) {
+    throw new NotFoundException(`Card with ID ${cardId} not found.`);
+  }
+
+  // Delete related progress entries first
+  await this.prisma.flashcardProgress.deleteMany({
+    where: { cardId },
+  });
+
+  // Then delete the card
+  await this.prisma.card.delete({ where: { id: cardId } });
+
+  return { message: 'Card deleted successfully.' };
+}
+
+/**
+ * Delete a whole category (deletes all cards via FK and progress cascades).
+ */
+async deleteCategory(categoryId: number) {
+  const existing = await this.prisma.flashcardCategory.findUnique({
+    where: { id: categoryId },
+  });
+
+  if (!existing) {
+    throw new NotFoundException(`Category with ID ${categoryId} not found.`);
+  }
+
+  // Delete all cards in the category (and optionally their progress)
+  const cards = await this.prisma.card.findMany({ where: { categoryId } });
+  for (const card of cards) {
+    await this.prisma.flashcardProgress.deleteMany({ where: { cardId: card.id } });
+  }
+  await this.prisma.card.deleteMany({ where: { categoryId } });
+
+  // Finally delete the category
+  await this.prisma.flashcardCategory.delete({ where: { id: categoryId } });
+
+  return { message: 'Category and all its cards deleted successfully.' };
+}
+/**
+ * Bulk upload cards to a category.
+ */
+async bulkUploadCards(categoryId: number, cards: CreateCardDto[]) {
+    // ensure category exists
+    const category = await this.prisma.flashcardCategory.findUnique({
+        where: { id: categoryId },
+    });
+
+    if (!category) {
+        throw new NotFoundException(`Category with ID ${categoryId} not found.`);
+    }
+
+    if (!cards.length) {
+        throw new BadRequestException('No cards provided for bulk upload.');
+    }
+
+    const formattedCards = cards.map(card => ({
+        frontText: card.frontText,
+        backText: card.backText,
+        categoryId,
+    }));
+
+    await this.prisma.card.createMany({
+        data: formattedCards,
+    });
+
+    return { message: `${cards.length} cards uploaded successfully.` };
+}
+
+
+
+async getAllCategories() {
+  return this.prisma.flashcardCategory.findMany({
+    orderBy: { createdAt: 'desc' }, // latest first
+    include: {
+      cards: false, // set to true if you want cards included
+    },
+  });
+}
 
     // ====================================================================
     // ------------------------- STUDY FLOW METHODS -------------------------
@@ -72,20 +199,25 @@ export class FlashcardService {
 
     /**
      * 1. Fetches all flashcard categories.
-     * 2. Calculates due, mastered, and active session status for each category.
+     * 2. Calculates real due, mastered, and active session status for each category.
      * 3. Calculates lifetime study metrics (total sessions, cards studied, average score).
      */
     async getDashboardOverview(userId: string): Promise<FlashcardOverviewResponseDto> {
-        // --- Phase 1: Category Summaries ---
-        // NOTE: Implementing the full due/mastered calculation requires complex date logic and 
-        // is often best done with raw SQL for performance on a large dataset. 
-        // Here, we provide placeholders and simplified logic.
-        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
+        const MASTERY_REPETITIONS_THRESHOLD = 5; // Define mastery as 5 or more successful repetitions
+
+        // --- Phase 1: Data Fetching ---
         const categories = await this.prisma.flashcardCategory.findMany({
             include: { cards: { select: { id: true } } },
             orderBy: { id: 'asc' },
         });
 
+        // Fetch ALL progress records for the user in one go for efficient filtering
+        const allUserProgress = await this.prisma.flashcardProgress.findMany({
+            where: { userId },
+        });
+        
         const activeSessions = await this.prisma.activeFlashcardSession.findMany({
             where: { 
                 userId, 
@@ -93,11 +225,26 @@ export class FlashcardService {
             }
         });
 
+
+        // --- Phase 2: Category Summaries Calculation (NO MORE MOCKING) ---
         const categorySummaries = categories.map(category => {
-            // Simplification: In a real app, 'due' would check FlashcardProgress.nextReview < today.
             const totalCards = category.cards.length;
+            const categoryCardIds = new Set(category.cards.map(c => c.id));
+            
+            // Filter progress records relevant to this category
+            const categoryProgress = allUserProgress.filter(p => categoryCardIds.has(p.cardId));
+
+            // Calculate DUE cards
+            const dueCount = categoryProgress.filter(p => 
+                p.nextReview && p.nextReview <= today
+            ).length;
+
+            // Calculate MASTERED cards (Repetitions >= 5)
+            const masteredCount = categoryProgress.filter(p => 
+                p.repetitions >= MASTERY_REPETITIONS_THRESHOLD
+            ).length;
+
             const isActiveSession = activeSessions.some(session => 
-                // This matching should ideally use categoryId, not categoryName, for reliability
                 session.categoryName === category.title 
             );
 
@@ -105,13 +252,13 @@ export class FlashcardService {
                 categoryId: category.id,
                 categoryTitle: category.title,
                 total: totalCards,
-                due: Math.floor(totalCards * 0.2), // Mocking due count
-                mastered: Math.floor(totalCards * 0.5), // Mocking mastered count
+                due: dueCount,         // Real calculation
+                mastered: masteredCount, // Real calculation
                 isActiveSession: isActiveSession,
             };
         });
 
-        // --- Phase 2: Lifetime Metrics ---
+        // --- Phase 3: Lifetime Metrics ---
         const lifetimeStats = await this.calculateLifetimeMetrics(userId);
 
         return {
@@ -185,6 +332,16 @@ export class FlashcardService {
             
             const sessionData = activeSession.sessionData as unknown as SessionData;
             const nextCardId = sessionData.remainingCardIds[0];
+            
+            if (!nextCardId) {
+                // If remainingCardIds is empty but status is ACTIVE/PAUSED, assume session is functionally finished
+                await this.prisma.activeFlashcardSession.update({
+                    where: { id: activeSession.id },
+                    data: { status: 'FINISHED', dateCompleted: new Date() },
+                });
+                 throw new NotFoundException('Session queue empty. Starting new session recommended.');
+            }
+
             const nextCard = category.cards.find(c => c.id === nextCardId);
 
             if (!nextCard) {
@@ -259,15 +416,12 @@ export class FlashcardService {
                 this.logger.log(`No new cards found. Falling back to reviewing least recently reviewed cards (Cram Mode).`);
                 
                 // Find studied cards, ordered by nextReview date ascending (i.e., due soonest / reviewed longest ago)
-                // We remove the nextReview: { not: null } filter to resolve the TypeScript error.
-                // Ordering ASC will naturally prioritize cards where nextReview is NULL (if the DB treats null as lowest value),
-                // followed by the earliest dates, which is the desired fallback behavior.
                 const allStudiedProgressRecords = await this.prisma.flashcardProgress.findMany({
                     where: {
                         userId,
                         cardId: { in: categoryCardIds },
                     },
-                    // Order by nextReview asc, to get cards that are coming up soonest (nulls likely first)
+                    // Order by nextReview asc, to get cards that are coming up soonest 
                     orderBy: { nextReview: 'asc' }, 
                     take: SESSION_LIMIT,
                 });
@@ -275,7 +429,7 @@ export class FlashcardService {
                 const recentlyReviewedIds = allStudiedProgressRecords.map(p => p.cardId);
 
                 if (recentlyReviewedIds.length === 0) {
-                    // This means the category is empty of both progress and cards, or there's an internal error.
+                    // This means the category is empty of both progress and cards, or all are fully mastered.
                     throw new NotFoundException('All cards in this category have been recently reviewed or mastered. Check back later!');
                 }
 
@@ -344,9 +498,15 @@ export class FlashcardService {
         if (!session || session.status === 'FINISHED') {
             throw new NotFoundException('Active session not found or already finished.');
         }
-
-        // 1. Update Session State (Correct/Incorrect Count)
+        
+        // Ensure the card being graded is the one expected at the front of the queue
         const sessionData = session.sessionData as unknown as SessionData;
+        const currentCardIdInQueue = sessionData.remainingCardIds[0];
+
+        if (currentCardIdInQueue !== dto.cardId) {
+            throw new BadRequestException('The card being graded does not match the expected card in the session queue. You must grade the current card before proceeding.');
+        }
+        
         let { remainingCardIds, correctCount, incorrectCount } = sessionData;
         
         const isCorrect = dto.grade >= 2;
@@ -359,7 +519,7 @@ export class FlashcardService {
         // Remove the current card from the front of the queue
         remainingCardIds.shift();
         
-        // If the card was incorrectly answered, push it to the end of the queue for review
+        // If the card was incorrectly answered, push it to the end of the queue for re-review
         if (!isCorrect) {
             remainingCardIds.push(dto.cardId);
         }

@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsInt, IsNotEmpty } from 'class-validator';
 
 /**
  * Common DTO for the card object returned during a session.
@@ -66,4 +68,17 @@ export class GradeCardResponseDto {
     description: 'The next card to be presented. Null if sessionFinished is true.' 
   })
   currentCard: CardInSessionDto | null; // Renamed from nextCard
+}
+
+
+
+export class GetCategoryQueryDto {
+  @ApiProperty({
+    description: 'ID of the category to load.',
+    example: 1,
+  })
+  @Type(() => Number)   // ← THIS FIXES THE ERROR
+  @IsInt()
+  @IsNotEmpty()
+  categoryId: number;
 }
