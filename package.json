@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-   "start": "prisma migrate deploy && prisma generate && node --max-old-space-size=1024 dist/main.js",
+    "start": "prisma migrate deploy && prisma generate && node --max-old-space-size=1024 dist/main.js",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
@@ -19,8 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
-     "prisma": {
-    "schema": "./prisma/schema"  
+  "prisma": {
+    "schema": "./prisma/schema"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -31,7 +31,7 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
-    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-express": "^11.1.9",
     "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "^6.9.0",
     "@types/bcrypt": "^5.0.2",
@@ -39,8 +39,9 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cloudinary": "^1.41.3",
+    "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
-    "multer": "^2.0.1",
+    "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.3",
     "passport": "^0.7.0",

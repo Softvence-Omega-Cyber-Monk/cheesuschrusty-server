@@ -1,12 +1,29 @@
-import { Controller, Get, Post, Body, Req, Res, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Res, HttpStatus, BadRequestException, Patch, Delete, Query, Param, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { FlashcardService } from './flashcard.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { GradeCardDto, PauseSessionDto, StartSessionDto } from './dto/flashcard.grading.dto';
 import sendResponse from '../utils/sendResponse';
-import { CreateCardDto, CreateCategoryDto } from './dto/create-flashcard.dto';
+import { CreateCardDto, CreateCategoryDto, UpdateCardDto } from './dto/create-flashcard.dto';
+import { GetCategoryQueryDto } from './dto/flashcard.response.dto';
+import * as csv from 'csv-parser';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Readable } from 'stream';
+
+
+
+
+interface CsvCard {
+  frontText: string;
+  backText: string;
+}
+
+
+
+
+
 
 
 
@@ -15,8 +32,218 @@ import { CreateCardDto, CreateCategoryDto } from './dto/create-flashcard.dto';
 export class FlashcardController {
   constructor(private readonly flashcardService: FlashcardService) {}
 
+// ====================================================================
+// ------------------------- CATEGORY QUERIES ---------------------------
+// ====================================================================
+@Get('category/get')
+@Roles(Role.USER, Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'Get a category with all its cards.' })
+async getCategoryWithCards(
+  @Res() res: Response,
+  @Query() query: GetCategoryQueryDto,
+) {
+    const data = await this.flashcardService.getCategoryWithCards(query.categoryId);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Category loaded successfully.',
+      data,
+    });
+}
 
 
+
+// ===========================
+// ----- GET ALL CATEGORIES -----
+// ===========================
+
+@Get('category/all')
+@Roles(Role.USER, Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'Get all flashcard categories.' })
+async getAllCategories(@Res() res: Response) {
+  const categories = await this.flashcardService.getAllCategories();
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: 'Categories loaded successfully.',
+    data: categories,
+  });
+}
+
+
+
+
+
+// ====================================================================
+// ------------------------- CARD EDITING -------------------------------
+// ====================================================================
+
+@Patch('card/update/:id')
+@Roles(Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'ADMIN: Update a flashcard.' })
+@ApiParam({
+  name: 'id',
+  type: Number,
+  description: 'The ID of the card to update.',
+  example: 12,
+})
+@ApiBody({
+  type: UpdateCardDto,
+  description: 'Fields to update in the flashcard.',
+})
+async updateCard(
+  @Res() res: Response,
+  @Param('id') id: number,
+  @Body() dto: UpdateCardDto,
+) {
+    const cardId = Number(id);
+
+    const data = await this.flashcardService.updateCard(cardId, dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Flashcard updated successfully.',
+      data,
+    });
+}
+// ====================================================================
+// ------------------------- CARD DELETION ----------------------------
+// ====================================================================
+
+@Delete('card/delete/:id')
+@Roles(Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'ADMIN: Delete a flashcard.' })
+@ApiParam({
+  name: 'id',
+  description: 'The ID of the flashcard to delete',
+  type: Number,
+  example: 1,
+})
+async deleteCard(
+  @Res() res: Response,
+  @Req() { params },
+) {
+  const cardId = Number(params.id);
+
+  const result = await this.flashcardService.deleteCard(cardId);
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: result.message,
+    data: null,
+  });
+}
+
+// ====================================================================
+// ------------------------- CATEGORY DELETION ------------------------
+// ====================================================================
+
+@Delete('category/delete/:id')
+@Roles(Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'ADMIN: Delete a flashcard category and all its cards.' })
+@ApiParam({
+  name: 'id',
+  description: 'The ID of the category to delete',
+  type: Number,
+  example: 1,
+})
+async deleteCategory(
+  @Res() res: Response,
+  @Req() { params },
+) {
+  const categoryId = Number(params.id);
+
+  const result = await this.flashcardService.deleteCategory(categoryId);
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: result.message,
+    data: null,
+  });
+}
+
+
+async parseCsv(file: Express.Multer.File): Promise<CreateCardDto[]> {
+  return new Promise((resolve, reject) => {
+    const results: CreateCardDto[] = [];
+    const readable = new Readable();
+    readable.push(file.buffer);
+    readable.push(null);
+
+    readable
+      .pipe(csv())
+      .on('data', (row) => {
+        // Handle possible BOM in CSV headers
+        const frontText = (row.frontText || row['ï»¿frontText'])?.trim();
+        const backText = row.backText?.trim();
+
+        if (frontText && backText) {
+          results.push({ frontText, backText } as CreateCardDto);
+        }
+      })
+      .on('end', () => resolve(results))
+      .on('error', (err) => reject(err));
+  });
+}
+
+@Post('card/bulk-upload-csv')
+@Roles(Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
+@ApiOperation({ summary: 'ADMIN: Bulk upload flashcards using a CSV file.' })
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  description: 'CSV file with flashcards and the categoryId.',
+  schema: {
+    type: 'object',
+    properties: {
+      categoryId: { type: 'number', example: 1 },
+      file: { type: 'string', format: 'binary' },
+    },
+  },
+})
+@UseInterceptors(FileInterceptor('file'))
+async uploadCsv(
+  @UploadedFile() file: Express.Multer.File,
+  @Body('categoryId') categoryId: number,
+  @Res() res: Response,
+) {
+  if (!file) {
+    return res.status(HttpStatus.BAD_REQUEST).json({
+      success: false,
+      message: 'CSV file is required.',
+    });
+  }
+
+  const cards = await this.parseCsv(file);
+
+  if (!cards.length) {
+    return res.status(HttpStatus.BAD_REQUEST).json({
+      success: false,
+      message: 'CSV file contains no valid cards.',
+    });
+  }
+
+  // Map categoryId to each card to satisfy CreateCardDto
+  const cardsWithCategory = cards.map((card) => ({
+    ...card,
+    categoryId,
+  }));
+
+  const result = await this.flashcardService.bulkUploadCards(
+   Number(categoryId),
+    cardsWithCategory,
+  );
+
+  return res.status(HttpStatus.CREATED).json({
+    success: true,
+    message: result.message,
+    data: result,
+  });
+}
 
   // ====================================================================
   // ------------------------- CONTENT CREATION ---------------------------
@@ -161,7 +388,7 @@ export class FlashcardController {
   /**
    * Endpoint to manually pause an active session.
    */
-  @Post('session/pause')
+  @Patch('session/pause')
   @Roles(Role.USER) 
   @ApiOperation({ summary: 'USER: Manually pause the current active session.' })
   @ApiResponse({ status: 200, description: 'Session paused successfully.' })

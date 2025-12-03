@@ -1,6 +1,7 @@
-import { IsString, IsNotEmpty, IsInt, IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsInt, IsEnum, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Difficulty } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 /**
  * DTO for creating a new Flashcard Category.
@@ -51,4 +52,47 @@ export class CreateCardDto {
   @IsInt()
   @IsNotEmpty()
   categoryId: number;
+}
+
+
+
+export class BulkUploadCardsDto {
+  @ApiProperty({
+    description: 'ID of the category where cards will be uploaded.',
+    example: 3,
+  })
+  @IsInt()
+  categoryId: number;
+
+  @ApiProperty({
+    description: 'List of cards to upload.',
+    type: [CreateCardDto],
+    example: [
+      { frontText: 'Bonjour', backText: 'Hello' },
+      { frontText: 'Merci', backText: 'Thank you' },
+    ],
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateCardDto)
+  cards: CreateCardDto[];
+}
+
+
+export class UpdateCardDto {
+  @ApiPropertyOptional({
+    description: 'Updated front text of the card.',
+    example: 'Buongiorno',
+  })
+  @IsString()
+  @IsOptional()
+  frontText?: string;
+
+  @ApiPropertyOptional({
+    description: 'Updated back text of the card.',
+    example: 'Good morning',
+  })
+  @IsString()
+  @IsOptional()
+  backText?: string;
 }
