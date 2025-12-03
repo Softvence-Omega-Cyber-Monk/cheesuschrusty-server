@@ -3,7 +3,7 @@
 import { Controller, Get, Query, Req, Res, HttpStatus, BadRequestException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { LessonType, Difficulty, Role } from '@prisma/client';
+import { LessonType, Role } from '@prisma/client';
 import { LessionService } from './lession.service';
 import sendResponse from '../utils/sendResponse';
 import { Roles } from 'src/common/decorators/roles.decorator';

@@ -28,7 +28,7 @@ export class GetLessonsQueryDto {
   limit?: number = 20;
 
   @ApiPropertyOptional({
-    description: 'Search term applied to the lesson prompt.',
+    description: 'Search term applied to the lesson title',
   })
   @IsOptional()
   @IsString()

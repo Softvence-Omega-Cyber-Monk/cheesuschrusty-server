@@ -12,6 +12,9 @@ import { LessionModule } from './module/lession/lession.module';
 import { SeederModule } from './seeder/seeder.module';
 import { SubscriptionPlanModule } from './module/subscription-plan/subscription-plan.module';
 import { SubscriptionModule } from './module/subscription/subscription.module';
+import { QuestionSetModule } from './module/question-set/question-set.module';
+import { FlashcardModule } from './module/flashcard/flashcard.module';
+
 
 
 
@@ -37,7 +40,9 @@ import { SubscriptionModule } from './module/subscription/subscription.module';
     LessionModule,
     SeederModule,
     SubscriptionPlanModule,
-    SubscriptionModule
+    SubscriptionModule,
+    QuestionSetModule,
+    FlashcardModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

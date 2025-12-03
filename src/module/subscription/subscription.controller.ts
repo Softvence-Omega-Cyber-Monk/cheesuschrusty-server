@@ -5,6 +5,7 @@ import {
   Res,
   Body,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -112,4 +113,25 @@ export class SubscriptionController {
       return res.status(400).send(`Webhook error: ${err.message}`);
     }
   }
+
+
+
+
+  // src/module/subscription/subscription.controller.ts
+@Get('me')
+@Roles(Role.USER)
+@ApiOperation({ summary: 'Get current user subscription details (Plan, End Date, Status).' })
+async getMySubscription(@Req() req:Request,@Res() res: Response) {
+  const details = await this.subService.getMySubscriptionDetails(req.user!.id);
+  
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: 'Subscription details retrieved.',
+    data: details,
+  });
+}
+
+
+
 }
