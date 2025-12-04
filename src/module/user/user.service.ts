@@ -227,4 +227,33 @@ const activePro = user.subscriptions.some(
 
     return user;
   }
+
+
+  async getUserMetaData() {
+    const now = new Date();
+
+    const [totalUsers, activeUsers, suspendedUsers, proUsers] = await this.prisma.$transaction([
+      this.prisma.user.count(), // total users
+      this.prisma.user.count({ where: { isActive: true } }), // active users
+      this.prisma.user.count({ where: { isActive: false } }), // suspended users
+      this.prisma.user.count({
+        where: {
+          subscriptions: {
+            some: {
+              plan: 'PRO',
+              status: { notIn: ['canceled', 'canceled_at_period_end'] },
+              currentPeriodEnd: { gt: now },
+            },
+          },
+        },
+      }), // pro users
+    ]);
+
+    return {
+      totalUsers,
+      activeUsers,
+      suspendedUsers,
+      proUsers,
+    };
+  }
 }

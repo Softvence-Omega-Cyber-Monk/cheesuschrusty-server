@@ -58,6 +58,20 @@ export class UserController {
       });
   }
 
+
+   @Get('metadata')
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
+  @ApiOperation({ summary: 'Get user metadata counts' })
+  async getUserMetaData(@Res() res: Response) {
+    const data = await this.userService.getUserMetaData();
+
+    return res.status(HttpStatus.OK).json({
+      success: true,
+      message: 'User metadata retrieved successfully',
+      data,
+    });
+  }
+
   @Get('students/:id')
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
   @ApiParam({ name: 'id', description: 'User ID' })
