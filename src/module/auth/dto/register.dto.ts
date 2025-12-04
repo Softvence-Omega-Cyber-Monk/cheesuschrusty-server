@@ -51,17 +51,6 @@ export class RegisterDto {
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   password: string;
 
-  @ApiProperty({
-    example: 'B1',
-    description: 'User\'s self-assessed current proficiency level.',
-    enum: Difficulty,
-  })
-  @IsNotEmpty({ message: 'Level is required for registration' })
-  @IsString()
-  @IsIn(difficultyLevels, {
-    message: 'Current level must be one of: A1, A2, B1, B2, C1, C2',
-  })
-  currentLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
   @ApiPropertyOptional({
     example: 30,

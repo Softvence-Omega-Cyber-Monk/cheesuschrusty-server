@@ -14,6 +14,7 @@ import { SubscriptionPlanModule } from './module/subscription-plan/subscription-
 import { SubscriptionModule } from './module/subscription/subscription.module';
 import { QuestionSetModule } from './module/question-set/question-set.module';
 import { FlashcardModule } from './module/flashcard/flashcard.module';
+import { TicketModule } from './module/ticket/ticket.module';
 
 
 
@@ -43,6 +44,7 @@ import { FlashcardModule } from './module/flashcard/flashcard.module';
     SubscriptionModule,
     QuestionSetModule,
     FlashcardModule,
+    TicketModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
