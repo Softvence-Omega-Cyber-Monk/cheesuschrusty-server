@@ -1,20 +1,17 @@
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+// src/module/user/dto/create-platform-user.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsIn } from 'class-validator';
 
-export class CreateAdminDto {
-  @ApiProperty({
-    example: 'admin@example.com',
-    description: 'Email address of the admin',
-  })
-  @IsNotEmpty({ message: 'Email is required' })
-  @IsEmail({}, { message: 'Email must be valid' })
+export class CreatePlatformUserDto {
+  @ApiProperty({ example: 'manager@example.com' })
+  @IsEmail()
   email: string;
 
-  @ApiProperty({
-    example: 'strongPassword123',
-    description: 'Password for the admin account (min 6 characters)',
-  })
-  @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(6, { message: 'Password must be at least 6 characters' })
-  password: string;
+  @ApiProperty({ example: 'John Doe' })
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ example: 'CONTENT_MANAGER', enum: ['CONTENT_MANAGER', 'SUPORT_MANAGER'] })
+  @IsIn(['CONTENT_MANAGER', 'SUPORT_MANAGER'])
+  role: 'CONTENT_MANAGER' | 'SUPORT_MANAGER';
 }

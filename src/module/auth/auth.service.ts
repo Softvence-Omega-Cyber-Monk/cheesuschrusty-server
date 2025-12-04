@@ -51,7 +51,7 @@ export class AuthService {
     subject: 'Your verification code',
     html, 
   });
-    return { message: 'OTP sent to your email' };
+    return { message: 'OTP sent to your email',code };
   }
 
 async register(dto: RegisterDto) {
@@ -74,7 +74,6 @@ async register(dto: RegisterDto) {
       email: dto.email,
       password: hashedPassword,
       emailVerified: true,
-      currentLevel: dto.currentLevel,
       dailyGoalMinutes: dto.dailyGoalMinutes, 
     },
   });
