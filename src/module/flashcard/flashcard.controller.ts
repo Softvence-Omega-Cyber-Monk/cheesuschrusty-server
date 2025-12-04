@@ -14,19 +14,6 @@ import { Readable } from 'stream';
 
 
 
-
-interface CsvCard {
-  frontText: string;
-  backText: string;
-}
-
-
-
-
-
-
-
-
 @ApiTags('Flashcards (User)')
 @Controller('flashcards')
 export class FlashcardController {
