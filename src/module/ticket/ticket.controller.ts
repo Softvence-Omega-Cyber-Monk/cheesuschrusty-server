@@ -95,6 +95,25 @@ export class TicketController {
     });
   }
 
+
+
+@Get('meta')
+@Roles(Role.SUPER_ADMIN, Role.SUPORT_MANAGER)
+@ApiOperation({ summary: 'ADMIN: Get ticket statistics/metadata for dashboard.' })
+@ApiResponse({ status: 200, description: 'Returns ticket metadata.' })
+async getTicketMeta(@Res() res: Response) {
+  const meta = await this.ticketService.getTicketMetaData();
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: 'Ticket metadata retrieved successfully.',
+    data: meta,
+  });
+}
+
+
+
   // ---------------------------------------------------
   // ADMIN/STAFF: Get single ticket by ID
   // ---------------------------------------------------

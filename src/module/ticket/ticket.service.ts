@@ -196,4 +196,77 @@ async createTicket(userId: string, subject: string, message: string) {
             throw error;
         }
     }
+
+
+
+
+
+async getTicketMetaData() {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  // 1. Total tickets
+  const totalTickets = await this.prisma.supportTicket.count();
+
+  // 2. Open tickets
+  const openTickets = await this.prisma.supportTicket.count({
+    where: { status: TicketStatus.OPEN },
+  });
+
+  // 3. Resolved today
+  const resolvedToday = await this.prisma.supportTicket.count({
+    where: {
+      status: TicketStatus.RESOLVED,
+      updatedAt: {
+        gte: startOfToday,
+        lt: endOfToday,
+      },
+    },
+  });
+
+  // 4. Average response time (first staff reply)
+  const firstReplies = await this.prisma.supportTicketMessage.findMany({
+    where: {
+      sender: { role: { in: ['SUPORT_MANAGER', 'SUPER_ADMIN'] } },
+    },
+    select: { ticketId: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  // Calculate response times
+  const tickets = await this.prisma.supportTicket.findMany({
+    select: { id: true, createdAt: true },
+  });
+
+  const responseTimes: number[] = [];
+
+  for (const ticket of tickets) {
+    const firstReply = firstReplies.find((r) => r.ticketId === ticket.id);
+    if (firstReply) {
+      const diff = firstReply.createdAt.getTime() - ticket.createdAt.getTime();
+      responseTimes.push(diff);
+    }
+  }
+
+  const avgResponseTime = responseTimes.length
+    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+    : null;
+
+
+  return {
+    totalTickets,
+    openTickets,
+    resolvedToday,
+    avgResponseTime: avgResponseTime ? avgResponseTime / 1000 : null, 
+  };
+}
+
+
+
+
+
+
+
+
 }
