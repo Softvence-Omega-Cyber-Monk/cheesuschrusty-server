@@ -76,7 +76,6 @@ enum AIProvider {
 // ------------------------
 // USER
 // ------------------------
-
 model User {
   id            String     @id @default(uuid())
   email         String     @unique
@@ -105,7 +104,7 @@ model User {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  // Relations
+  // Relations (no onDelete here)
   lessonProgress          UserLessonProgress[]
   flashcardProgress       FlashcardProgress[]
   notifications           UserNotification[]
@@ -113,9 +112,7 @@ model User {
   subscriptions           Subscription[]
   supportTickets          SupportTicket[]
   activeFlashcardSessions ActiveFlashcardSession[] @relation("UserSessions")
-
-  // ✅ NEW: proper inverse relation for messages
-  supportMessages         SupportTicketMessage[] @relation("UserSentMessages")
+  supportMessages         SupportTicketMessage[]   @relation("UserSentMessages")
 
   @@map("users")
 }
@@ -123,7 +120,6 @@ model User {
 // ------------------------
 // LESSONS
 // ------------------------
-
 model Lesson {
   id          Int         @id @default(autoincrement())
   title       String
@@ -155,7 +151,7 @@ model QuestionSet {
 model UserLessonProgress {
   id          Int     @id @default(autoincrement())
   userId      String
-  user        User    @relation(fields: [userId], references: [id])
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessonId    Int
   lesson      Lesson  @relation(fields: [lessonId], references: [id])
   score       Int?
@@ -167,7 +163,6 @@ model UserLessonProgress {
 // ------------------------
 // FLASHCARDS
 // ------------------------
-
 model FlashcardCategory {
   id         Int        @id @default(autoincrement())
   title      String
@@ -192,7 +187,7 @@ model Card {
 model FlashcardProgress {
   id                  Int      @id @default(autoincrement())
   userId              String
-  user                User     @relation(fields: [userId], references: [id])
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardId              Int
   card                Card     @relation(fields: [cardId], references: [id])
   easeFactor          Float    @default(2.5)
@@ -209,7 +204,7 @@ model FlashcardProgress {
 model ActiveFlashcardSession {
   id            String   @id @default(uuid())
   userId        String
-  user          User     @relation("UserSessions", fields: [userId], references: [id])
+  user          User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
   categoryName  String
   status        SessionStatus @default(ACTIVE)
   sessionData   Json
@@ -223,7 +218,6 @@ model ActiveFlashcardSession {
 // ------------------------
 // STUDY PLAN / SUBSCRIPTIONS
 // ------------------------
-
 model StudyPlan {
   id          String   @id @default(uuid())
   userId      String   @unique
@@ -271,7 +265,6 @@ model Plan {
 // ------------------------
 // SUPPORT TICKETS
 // ------------------------
-
 model SupportTicket {
   id        String   @id @default(uuid())
   userId    String
@@ -290,10 +283,10 @@ model SupportTicket {
 model SupportTicketMessage {
   id        String   @id @default(uuid())
   ticketId  String
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id])
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   senderId  String
-  sender    User @relation("UserSentMessages", fields: [senderId], references: [id])
+  sender    User @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   message   String
   createdAt DateTime @default(now())
@@ -302,7 +295,6 @@ model SupportTicketMessage {
 // ------------------------
 // NOTIFICATIONS
 // ------------------------
-
 model UserNotification {
   id        String   @id @default(uuid())
   userId    String

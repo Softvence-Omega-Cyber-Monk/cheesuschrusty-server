@@ -45,6 +45,7 @@ import { TicketModule } from './module/ticket/ticket.module';
     QuestionSetModule,
     FlashcardModule,
     TicketModule,
+    UserModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

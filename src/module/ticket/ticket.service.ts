@@ -200,67 +200,64 @@ async createTicket(userId: string, subject: string, message: string) {
 
 
 
-
 async getTicketMetaData() {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const totalTickets = await this.prisma.supportTicket.count();
+    const openTickets = await this.prisma.supportTicket.count({
+        where: { status: 'OPEN' },
+    });
 
-  // 1. Total tickets
-  const totalTickets = await this.prisma.supportTicket.count();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-  // 2. Open tickets
-  const openTickets = await this.prisma.supportTicket.count({
-    where: { status: TicketStatus.OPEN },
-  });
+    const resolvedToday = await this.prisma.supportTicket.count({
+        where: {
+            status: 'RESOLVED',
+            updatedAt: { gte: todayStart },
+        },
+    });
 
-  // 3. Resolved today
-  const resolvedToday = await this.prisma.supportTicket.count({
-    where: {
-      status: TicketStatus.RESOLVED,
-      updatedAt: {
-        gte: startOfToday,
-        lt: endOfToday,
-      },
+    // Calculate average response time
+const tickets = await this.prisma.supportTicket.findMany({
+  include: { 
+    messages: {
+      include: { sender: true }, 
     },
-  });
+  },
+});
 
-  // 4. Average response time (first staff reply)
-  const firstReplies = await this.prisma.supportTicketMessage.findMany({
-    where: {
-      sender: { role: { in: ['SUPORT_MANAGER', 'SUPER_ADMIN'] } },
-    },
-    select: { ticketId: true, createdAt: true },
-    orderBy: { createdAt: 'asc' },
-  });
+    const responseTimes: number[] = [];
 
-  // Calculate response times
-  const tickets = await this.prisma.supportTicket.findMany({
-    select: { id: true, createdAt: true },
-  });
+    tickets.forEach(ticket => {
+        // Get first staff reply
+        const firstReply = ticket.messages
+            .filter(msg => msg.sender!.role === 'SUPORT_MANAGER' || msg.sender.role === 'SUPER_ADMIN')
+            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
 
-  const responseTimes: number[] = [];
+        if (firstReply) {
+            const diffMs = firstReply.createdAt.getTime() - ticket.createdAt.getTime();
+            responseTimes.push(diffMs);
+        }
+    });
 
-  for (const ticket of tickets) {
-    const firstReply = firstReplies.find((r) => r.ticketId === ticket.id);
-    if (firstReply) {
-      const diff = firstReply.createdAt.getTime() - ticket.createdAt.getTime();
-      responseTimes.push(diff);
-    }
-  }
+    const avgResponseTimeMs = responseTimes.length
+        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+        : 0;
 
-  const avgResponseTime = responseTimes.length
-    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
-    : null;
+    // Convert ms → human readable
+    const totalSeconds = Math.round(avgResponseTimeMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
 
+    const avgResponseTime = hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
 
-  return {
-    totalTickets,
-    openTickets,
-    resolvedToday,
-    avgResponseTime: avgResponseTime ? avgResponseTime / 1000 : null, 
-  };
+    return {
+        totalTickets,
+        openTickets,
+        resolvedToday,
+        avgResponseTime,
+    };
 }
+
 
 
 
