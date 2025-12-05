@@ -117,7 +117,7 @@ async login(dto: LoginDto) {
   if (user.failedLoginAttempts > 0 || user.lockedUntil) {
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null },
+      data: { failedLoginAttempts: 0, lockedUntil: null,lastLoginAt: new Date() },
     });
   }
 

@@ -359,6 +359,7 @@ model SecuritySettings {
 
   // Data Privacy
   dataRetentionPolicy       Boolean  @default(true)
+  dataRetentionDays         Int      @default(365)
   gdprComplianceMode        Boolean  @default(false)
 
   createdAt                 DateTime @default(now())
