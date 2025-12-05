@@ -1,6 +1,6 @@
 // src/module/security-settings/dto/update-security-settings.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max, IsBoolean } from 'class-validator';
+import { IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
 
 export class UpdateSecuritySettingsDto {
   // Password Policy

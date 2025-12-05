@@ -106,9 +106,9 @@ model User {
 
 
    // --- New fields for SecuritySettings ---
-  loginAttempts           Int      @default(0)         // Track failed login attempts
+  failedLoginAttempts     Int      @default(0)      // Track failed login attempts
   lastLoginAt             DateTime?                     // Track last login time (for session timeout)
-
+  lockedUntil         DateTime?
 
   // Relations (no onDelete here)
   lessonProgress          UserLessonProgress[]

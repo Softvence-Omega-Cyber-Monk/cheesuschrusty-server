@@ -76,15 +76,52 @@ async login(dto: LoginDto) {
     throw new BadRequestException('User is blocked!');
   }
 
-  const isMatch = await bcrypt.compare(dto.password, user.password);
-  if (!isMatch) {
-    throw new ForbiddenException('Invalid credentials');
-  }
-
   // Get security settings
   const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
-  const sessionTimeoutMs = securitySettings!.sessionTimeoutDays * 24 * 60 * 60 * 1000;
+  const maxAttempts = securitySettings?.maxLoginAttempts || 5;
+  const sessionTimeoutMs = (securitySettings?.sessionTimeoutDays || 1) * 24 * 60 * 60 * 1000; // days → ms
+  const lockDurationMs = 15 * 60 * 1000; // 15 minutes lock on max attempts
 
+  // Check if account is temporarily locked
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    throw new BadRequestException(`Account temporarily locked. Try again in ${minutesLeft} minute(s).`);
+  }
+
+  const isMatch = await bcrypt.compare(dto.password, user.password);
+
+  if (!isMatch) {
+    // Increment failed attempts
+    let failedAttempts = user.failedLoginAttempts + 1;
+    const updateData: any = { failedLoginAttempts: failedAttempts };
+
+    // Lock account if max attempts reached
+    if (failedAttempts >= maxAttempts) {
+      updateData.lockedUntil = new Date(Date.now() + lockDurationMs);
+      updateData.failedLoginAttempts = 0; // reset after lock
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: updateData,
+    });
+
+    throw new ForbiddenException(
+      failedAttempts === 0
+        ? `Account temporarily locked due to too many failed login attempts. Try again in 15 minutes.`
+        : `Invalid credentials. ${maxAttempts - failedAttempts} attempt(s) left.`
+    );
+  }
+
+  // Reset failed attempts and lock on successful login
+  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
+  }
+
+  // Generate tokens using session timeout
   const tokens = await getTokens(this.jwtService, user.id, user.email, user.role, sessionTimeoutMs);
 
   return { user, ...tokens };
