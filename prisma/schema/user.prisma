@@ -367,3 +367,29 @@ model SecuritySettings {
 
   @@map("security_settings")
 }
+
+
+
+model PlatformSettings {
+  id                  Int      @id @default(1)
+
+  platformName        String   @default("ItalianMaster")
+  platformTitle       String?
+  platformDescription String?  @db.Text
+
+  defaultLanguage     String   @default("English")
+  defaultTimezone     String   @default("Europe/Rome")
+
+  // Feature toggles
+  allowNewRegistration Boolean @default(true)
+  
+  freeTrialEnabled     Boolean @default(true)   // <--- NEW (toggle)
+  freeTrialPeriodDays  Int     @default(7)      // <--- number field
+
+  maintenanceMode      Boolean @default(false)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("platform_settings")
+}

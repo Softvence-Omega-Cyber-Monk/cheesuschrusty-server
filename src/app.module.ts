@@ -18,6 +18,7 @@ import { TicketModule } from './module/ticket/ticket.module';
 import { SettingsModule } from './module/settings/settings.module';
 import { BrandingSettingsModule } from './module/branding-settings/branding-settings.module';
 import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
+import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
 
 
 
@@ -51,7 +52,8 @@ import { SecuritySettingsModule } from './module/security-settings/security-sett
     UserModule,
     SettingsModule,
     BrandingSettingsModule,
-    SecuritySettingsModule
+    SecuritySettingsModule,
+    PlatformSettingsModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
