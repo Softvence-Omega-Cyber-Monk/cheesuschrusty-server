@@ -1,29 +1,6 @@
 // src/auth/dto/register.dto.ts
-
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MinLength,
-  IsIn,
-  Matches,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Difficulty } from '@prisma/client';
-
-
-const difficultyLevels = Object.values(Difficulty);
-
-export class RequestOtpBodyDto {
-  @ApiProperty({
-    example: 'marco.rossi@gmail.com',
-    description: 'The email address where the OTP will be sent',
-  })
-  @IsEmail({}, { message: 'Please provide a valid email' })
-  @IsNotEmpty({ message: 'Email is required' })
-  email: string;
-}
 
 export class RegisterDto {
   @ApiPropertyOptional({
@@ -43,14 +20,13 @@ export class RegisterDto {
   email: string;
 
   @ApiProperty({
-    example: '12345678',
-    description: 'Password (min 8 characters)',
+    example: 'StrongPass123!',
+    description: 'User password',
   })
   @IsNotEmpty({ message: 'Password is required' })
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   password: string;
-
 
   @ApiPropertyOptional({
     example: 30,
@@ -62,14 +38,4 @@ export class RegisterDto {
     message: 'Daily goal must be 10, 15, 20, 30, 45 or 60 minutes',
   })
   dailyGoalMinutes?: number;
-
-  @ApiProperty({
-    example: '483920',
-    description: '6-digit OTP sent to email',
-  })
-  @IsNotEmpty({ message: 'OTP code is required' })
-  @IsString()
-  @MinLength(6, { message: 'OTP must be 6 digits' })
-  @Matches(/^\d{6}$/, { message: 'OTP must contain exactly 6 digits' })
-  code: string;
 }

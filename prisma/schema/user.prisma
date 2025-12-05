@@ -89,7 +89,7 @@ model User {
 
   nativeLang    String     @default("English")
   targetLang    String     @default("Italian")
-  currentLevel  Difficulty @default(A1)
+  currentLevel  Difficulty @default(B1)
 
   xp                      Int      @default(0)
   currentStreak           Int      @default(0)
@@ -103,6 +103,12 @@ model User {
   stripeCustomerId        String?  @unique
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+
+   // --- New fields for SecuritySettings ---
+  loginAttempts           Int      @default(0)         // Track failed login attempts
+  lastLoginAt             DateTime?                     // Track last login time (for session timeout)
+
 
   // Relations (no onDelete here)
   lessonProgress          UserLessonProgress[]
@@ -335,3 +341,28 @@ model BrandingSettings {
   @@map("branding_settings")
 }
 
+
+
+
+model SecuritySettings {
+  id                        Int      @id @default(1)
+
+  // Password Policy
+  minPasswordLength         Int      @default(8)
+  passwordExpiryDays        Int      @default(90)
+  requireSpecialChars       Boolean  @default(true)
+  requireUppercaseLetters   Boolean  @default(true)
+
+  // Session Management
+  sessionTimeoutDays        Int      @default(3) 
+  maxLoginAttempts          Int      @default(5)
+
+  // Data Privacy
+  dataRetentionPolicy       Boolean  @default(true)
+  gdprComplianceMode        Boolean  @default(false)
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("security_settings")
+}

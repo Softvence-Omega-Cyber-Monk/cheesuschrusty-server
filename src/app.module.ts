@@ -17,6 +17,7 @@ import { FlashcardModule } from './module/flashcard/flashcard.module';
 import { TicketModule } from './module/ticket/ticket.module';
 import { SettingsModule } from './module/settings/settings.module';
 import { BrandingSettingsModule } from './module/branding-settings/branding-settings.module';
+import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
 
 
 
@@ -49,7 +50,8 @@ import { BrandingSettingsModule } from './module/branding-settings/branding-sett
     TicketModule,
     UserModule,
     SettingsModule,
-    BrandingSettingsModule
+    BrandingSettingsModule,
+    SecuritySettingsModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

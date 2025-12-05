@@ -10,11 +10,14 @@ export async function getTokens(
   userId: string,
   email: string,
   role: string,
+  sessionTimeoutDays?: number,
 ) {
+
+   const expiresIn = sessionTimeoutDays ? sessionTimeoutDays * 24 * 60 * 60 : parseInt(process.env.ACCESS_TOKEN_EXPIREIN!);
   const [access_token, refresh_token] = await Promise.all([
     jwtService.signAsync({ id: userId, email, role }, {
       secret: process.env.ACCESS_TOKEN_SECRET,
-      expiresIn: process.env.ACCESS_TOKEN_EXPIREIN,
+     expiresIn, 
     }),
     jwtService.signAsync({ id: userId, email, role }, {
       secret: process.env.REFRESH_TOKEN_SECRET,
@@ -59,4 +62,28 @@ export async function verifyOtp(
   });
 
   return { message: 'OTP verified successfully' };
+}
+
+
+
+export function validatePassword(password: string, settings: {
+  minPasswordLength?: number,
+  requireSpecialChars?: boolean,
+  requireUppercaseLetters?: boolean,
+}) {
+  const { minPasswordLength = 8, requireSpecialChars = true, requireUppercaseLetters = true } = settings;
+
+  if (password.length < minPasswordLength) {
+    throw new BadRequestException(`Password must be at least ${minPasswordLength} characters long.`);
+  }
+
+  if (requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    throw new BadRequestException('Password must include at least one special character.');
+  }
+
+  if (requireUppercaseLetters && !/[A-Z]/.test(password)) {
+    throw new BadRequestException('Password must include at least one uppercase letter.');
+  }
+
+  return true;
 }
