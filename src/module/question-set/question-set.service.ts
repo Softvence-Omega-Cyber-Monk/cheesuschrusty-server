@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { CreateQuestionSetDto } from './dto/question-set.dto';
 import { LessonType, QuestionSet, SubCategoryType } from '@prisma/client';
 

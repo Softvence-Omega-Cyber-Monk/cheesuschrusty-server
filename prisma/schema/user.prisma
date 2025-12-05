@@ -308,3 +308,30 @@ model UserNotification {
 
   @@map("user_notifications")
 }
+
+
+
+
+
+
+
+
+//settings
+model BrandingSettings {
+  id              Int      @id @default(1)
+  platformLogoUrl String?
+  faviconUrl      String?
+  
+  primaryColor    String   @default("#003213")
+  secondaryColor  String   @default("#3F83F5")
+  accentColor     String   @default("#0e0ebf")
+
+  headingFont     String   @default("Inter")
+  bodyFont        String   @default("Inter")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("branding_settings")
+}
+

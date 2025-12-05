@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { Role, SubscriptionPlan } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
