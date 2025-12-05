@@ -3,7 +3,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
 
 export class UpdateSecuritySettingsDto {
+  // -------------------------
   // Password Policy
+  // -------------------------
   @ApiPropertyOptional({ description: 'Minimum password length', example: 8 })
   @IsOptional()
   @IsInt()
@@ -26,8 +28,10 @@ export class UpdateSecuritySettingsDto {
   @IsBoolean()
   requireUppercaseLetters?: boolean;
 
+  // -------------------------
   // Session Management
-  @ApiPropertyOptional({ description: 'Session timeout in days', example: 3})
+  // -------------------------
+  @ApiPropertyOptional({ description: 'Session timeout in days', example: 3 })
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -39,11 +43,19 @@ export class UpdateSecuritySettingsDto {
   @Min(1)
   maxLoginAttempts?: number;
 
+  // -------------------------
   // Data Privacy
+  // -------------------------
   @ApiPropertyOptional({ description: 'Enable automatic deletion of inactive user data', example: true })
   @IsOptional()
   @IsBoolean()
   dataRetentionPolicy?: boolean;
+
+  @ApiPropertyOptional({ description: 'Number of days before inactive user data is deleted', example: 365 })
+  @IsOptional()
+  @IsInt()
+  @Min(30) // minimum 1 month recommended
+  dataRetentionDays?: number;
 
   @ApiPropertyOptional({ description: 'Enable GDPR compliance mode', example: false })
   @IsOptional()
