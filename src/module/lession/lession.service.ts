@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Difficulty, Lesson, LessonType, Prisma } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { CreateLessonContainerDto } from './dto/create-lesson.dto';
@@ -18,7 +18,7 @@ export class LessionService {
             data: {
                 title: dto.title,
                 type: dto.type,
-                difficulty: dto.difficulty,
+                // difficulty: dto.difficulty,
                 provider: dto.provider,
                 isPublished: false, 
             },

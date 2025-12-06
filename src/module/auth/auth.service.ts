@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -16,7 +16,7 @@ import {
   VerifyResetCodeDto,
 } from './dto/forget-reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { generateOtpCode, getTokens, hashOtpCode, verifyOtp } from './auth.utils';
+import { generateOtpCode, getTokens, hashOtpCode, validatePassword, verifyOtp } from './auth.utils';
 import { MailService } from '../mail/mail.service';
 import { MailTemplatesService } from '../mail/mail.template';
 
@@ -30,30 +30,6 @@ export class AuthService {
     private mailTemplatesService: MailTemplatesService,
   ) {}
 
-
-// register 
-  async requestRegisterOtp(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (user) {
-      throw new BadRequestException('Email already registered');
-    }
-
-    const code = generateOtpCode();
-    const hashedCode =await hashOtpCode(code);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    await this.prisma.otpCode.create({
-      data: { email, code: hashedCode, expiresAt },
-    });
-    const html = await this.mailTemplatesService.getEmailVerificationOtpTemplate(code);
-    await this.mailerService.sendMail({
-    to: email,
-    subject: 'Your verification code',
-    html, 
-  });
-    return { message: 'OTP sent to your email',code };
-  }
-
 async register(dto: RegisterDto) {
   const existingUser = await this.prisma.user.findUnique({
     where: { email: dto.email },
@@ -63,8 +39,9 @@ async register(dto: RegisterDto) {
     throw new BadRequestException('Email is already registered!');
   }
 
-
-  await verifyOtp(this.prisma,dto.email, dto.code);
+  // Optional: Validate password based on SecuritySettings
+  const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
+  validatePassword(dto.password, securitySettings!);
 
   const hashedPassword = await bcrypt.hash(dto.password, parseInt(process.env.SALT_ROUND!));
 
@@ -74,39 +51,82 @@ async register(dto: RegisterDto) {
       email: dto.email,
       password: hashedPassword,
       emailVerified: true,
-      dailyGoalMinutes: dto.dailyGoalMinutes, 
+      dailyGoalMinutes: dto.dailyGoalMinutes,
     },
   });
 
-  await this.prisma.otpCode.deleteMany({ where: { email: dto.email } });
+  // Calculate session timeout in milliseconds
+  const sessionTimeoutMs = securitySettings!.sessionTimeoutDays * 24 * 60 * 60 * 1000;
 
-  const tokens = await getTokens(this.jwtService,newUser.id, newUser.email, newUser.role);
+  const tokens = await getTokens(this.jwtService, newUser.id, newUser.email, newUser.role, sessionTimeoutMs);
   return { user: newUser, ...tokens };
 }
 
 
 
-
 // login 
-  async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+async login(dto: LoginDto) {
+  const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
 
-    if (!user || !user.password) {
-      throw new ForbiddenException('Invalid credentials');
-    }
-
-    if(!user.isActive){
-        throw new BadRequestException('User is blocked!');
-    }
-
-    const isMatch = await bcrypt.compare(dto.password, user.password);
-    if (!isMatch) {
-      throw new ForbiddenException('Invalid credentials');
-    }
-
-    const tokens = await getTokens(this.jwtService,user.id, user.email, user.role);
-    return { user, ...tokens };
+  if (!user || !user.password) {
+    throw new ForbiddenException('Invalid credentials');
   }
+
+  if (!user.isActive) {
+    throw new BadRequestException('User is blocked!');
+  }
+
+  // Get security settings
+  const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
+  const maxAttempts = securitySettings?.maxLoginAttempts || 5;
+  const sessionTimeoutMs = (securitySettings?.sessionTimeoutDays || 1) * 24 * 60 * 60 * 1000; // days → ms
+  const lockDurationMs = 15 * 60 * 1000; // 15 minutes lock on max attempts
+
+  // Check if account is temporarily locked
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    throw new BadRequestException(`Account temporarily locked. Try again in ${minutesLeft} minute(s).`);
+  }
+
+  const isMatch = await bcrypt.compare(dto.password, user.password);
+
+  if (!isMatch) {
+    // Increment failed attempts
+    let failedAttempts = user.failedLoginAttempts + 1;
+    const updateData: any = { failedLoginAttempts: failedAttempts };
+
+    // Lock account if max attempts reached
+    if (failedAttempts >= maxAttempts) {
+      updateData.lockedUntil = new Date(Date.now() + lockDurationMs);
+      updateData.failedLoginAttempts = 0; // reset after lock
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: updateData,
+    });
+
+    throw new ForbiddenException(
+      failedAttempts === 0
+        ? `Account temporarily locked due to too many failed login attempts. Try again in 15 minutes.`
+        : `Invalid credentials. ${maxAttempts - failedAttempts} attempt(s) left.`
+    );
+  }
+
+  // Reset failed attempts and lock on successful login
+  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null,lastLoginAt: new Date() },
+    });
+  }
+
+  // Generate tokens using session timeout
+  const tokens = await getTokens(this.jwtService, user.id, user.email, user.role, sessionTimeoutMs);
+
+  return { user, ...tokens };
+}
+
 
 
 // refresh token 
@@ -142,7 +162,11 @@ async register(dto: RegisterDto) {
       throw new BadRequestException('Old password is incorrect');
     }
 
- 
+  // Fetch security rules
+  const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
+
+  // Validate new password
+  validatePassword(dto.newPassword, securitySettings!);
 
     const hashed = await bcrypt.hash(dto.newPassword, parseInt(process.env.SALT_ROUND!) );
     await this.prisma.user.update({
@@ -154,31 +178,6 @@ async register(dto: RegisterDto) {
   }
 
 
-// forget and reset password 
-  // async requestResetCode(dto: RequestResetCodeDto) {
-  //   const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-  //   if (!user) throw new NotFoundException('User not found');
-  //    if(!user.isActive){
-  //     throw new BadRequestException('User is blocked!');
-  //   }
-
-
-  //   const code = generateOtpCode();
-  //   const hashedCode = await hashOtpCode(code);
-  //   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-  //   await this.prisma.otpCode.create({
-  //     data: { email: dto.email, code: hashedCode, expiresAt },
-  //   });
-
-  //   await this.mailerService.sendMail({
-  //     to: dto.email,
-  //     subject: 'Reset Password Code',
-  //     text: `Your OTP code is ${code}. It will expire in 5 minutes.`,
-  //   });
-
-  //   return { message: 'Reset code sent' };
-  // }
 
   // forget and reset password 
 async requestResetCode(dto: RequestResetCodeDto) {
@@ -229,6 +228,13 @@ async requestResetCode(dto: RequestResetCodeDto) {
     if (!verified) {
       throw new BadRequestException('OTP not verified');
     }
+
+
+     // Fetch security rules
+  const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
+
+  // Validate new password
+   validatePassword(dto.password, securitySettings!);
 
     const hashed = await bcrypt.hash(dto.password, parseInt(process.env.SALT_ROUND!));
     await this.prisma.user.update({

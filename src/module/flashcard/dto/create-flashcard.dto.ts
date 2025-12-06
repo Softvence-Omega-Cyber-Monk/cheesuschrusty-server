@@ -15,14 +15,14 @@ export class CreateCategoryDto {
   @IsNotEmpty()
   title: string;
 
-  @ApiProperty({ 
-    description: 'The difficulty level of the category.', 
-    enum: Difficulty,
-    example: Difficulty.A1 
-  })
-  @IsEnum(Difficulty)
-  @IsNotEmpty()
-  difficulty: Difficulty;
+  // @ApiProperty({ 
+  //   description: 'The difficulty level of the category.', 
+  //   enum: Difficulty,
+  //   example: Difficulty.A1 
+  // })
+  // @IsEnum(Difficulty)
+  // @IsNotEmpty()
+  // difficulty: Difficulty;
 }
 
 /**

@@ -3,7 +3,7 @@ import { LessonType, Difficulty, AIProvider } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger'; 
 
 const lessonTypes = Object.values(LessonType);
-const difficultyLevels = Object.values(Difficulty);
+// const difficultyLevels = Object.values(Difficulty);
 const aiProviders = Object.values(AIProvider);
 
 /**
@@ -29,15 +29,15 @@ export class CreateLessonContainerDto {
   @IsIn(lessonTypes)
   type: LessonType;
 
-  @ApiProperty({
-    description: 'The proficiency level this lesson is targeted at.',
-    enum: difficultyLevels,
-    example: Difficulty.B1,
-  })
-  @IsNotEmpty()
-  @IsString()
-  @IsIn(difficultyLevels)
-  difficulty: Difficulty;
+  // @ApiProperty({
+  //   description: 'The proficiency level this lesson is targeted at.',
+  //   enum: difficultyLevels,
+  //   example: Difficulty.B1,
+  // })
+  // @IsNotEmpty()
+  // @IsString()
+  // @IsIn(difficultyLevels)
+  // difficulty: Difficulty;
   
   @ApiProperty({
     description: 'The AI provider chosen by the admin for generating this content.',

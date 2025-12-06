@@ -89,7 +89,7 @@ model User {
 
   nativeLang    String     @default("English")
   targetLang    String     @default("Italian")
-  currentLevel  Difficulty @default(A1)
+  currentLevel  Difficulty @default(B1)
 
   xp                      Int      @default(0)
   currentStreak           Int      @default(0)
@@ -103,6 +103,12 @@ model User {
   stripeCustomerId        String?  @unique
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+
+   // --- New fields for SecuritySettings ---
+  failedLoginAttempts     Int      @default(0)      // Track failed login attempts
+  lastLoginAt             DateTime?                     // Track last login time (for session timeout)
+  lockedUntil         DateTime?
 
   // Relations (no onDelete here)
   lessonProgress          UserLessonProgress[]
@@ -124,7 +130,7 @@ model Lesson {
   id          Int         @id @default(autoincrement())
   title       String
   type        LessonType
-  difficulty  Difficulty
+  difficulty  Difficulty  @default(B1)
   provider    AIProvider?
   isPublished Boolean     @default(false)
   createdAt   DateTime    @default(now())
@@ -166,7 +172,7 @@ model UserLessonProgress {
 model FlashcardCategory {
   id         Int        @id @default(autoincrement())
   title      String
-  difficulty Difficulty
+  difficulty Difficulty @default(B1)
   cards      Card[]
   createdAt  DateTime @default(now())
 
@@ -307,4 +313,83 @@ model UserNotification {
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notifications")
+}
+
+
+
+
+
+
+
+
+//settings
+model BrandingSettings {
+  id              Int      @id @default(1)
+  platformLogoUrl String?
+  faviconUrl      String?
+  
+  primaryColor    String   @default("#003213")
+  secondaryColor  String   @default("#3F83F5")
+  accentColor     String   @default("#0e0ebf")
+
+  headingFont     String   @default("Inter")
+  bodyFont        String   @default("Inter")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("branding_settings")
+}
+
+
+
+
+model SecuritySettings {
+  id                        Int      @id @default(1)
+
+  // Password Policy
+  minPasswordLength         Int      @default(8)
+  passwordExpiryDays        Int      @default(90)
+  requireSpecialChars       Boolean  @default(true)
+  requireUppercaseLetters   Boolean  @default(true)
+
+  // Session Management
+  sessionTimeoutDays        Int      @default(3) 
+  maxLoginAttempts          Int      @default(5)
+
+  // Data Privacy
+  dataRetentionPolicy       Boolean  @default(true)
+  dataRetentionDays         Int      @default(365)
+  gdprComplianceMode        Boolean  @default(false)
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("security_settings")
+}
+
+
+
+model PlatformSettings {
+  id                  Int      @id @default(1)
+
+  platformName        String   @default("ItalianMaster")
+  platformTitle       String?
+  platformDescription String?  @db.Text
+
+  defaultLanguage     String   @default("English")
+  defaultTimezone     String   @default("Europe/Rome")
+
+  // Feature toggles
+  allowNewRegistration Boolean @default(true)
+  
+  freeTrialEnabled     Boolean @default(true)   // <--- NEW (toggle)
+  freeTrialPeriodDays  Int     @default(7)      // <--- number field
+
+  maintenanceMode      Boolean @default(false)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("platform_settings")
 }

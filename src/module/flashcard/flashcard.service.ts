@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { FlashcardOverviewResponseDto } from './dto/flashcard.overview.dto';
 import { GradeCardDto, StartSessionDto } from './dto/flashcard.grading.dto';
@@ -36,7 +36,7 @@ export class FlashcardService {
         return this.prisma.flashcardCategory.create({
             data: {
                 title: dto.title,
-                difficulty: dto.difficulty,
+                // difficulty: dto.difficulty,
             },
         });
     }

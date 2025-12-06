@@ -317,7 +317,7 @@
 // }
 
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import Stripe from 'stripe';
 import { SubscriptionPlanService } from '../subscription-plan/subscription-plan.service';
 import { SubscriptionPlan as PrismaSubscriptionPlan } from '@prisma/client'; // Import for type safety

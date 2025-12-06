@@ -1,6 +1,6 @@
 import { Body, Controller, HttpStatus, Patch, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, RequestOtpBodyDto } from './dto/register.dto';
+import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import sendResponse from '../utils/sendResponse';
 import { Public } from 'src/common/decorators/public.decorators';
@@ -16,32 +16,19 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+// src/auth/auth.controller.ts
+@Public()
+@Post('register')
+async register(@Body() dto: RegisterDto, @Res() res: Response) {
+  const result = await this.authService.register(dto);
+  return sendResponse(res, {
+    statusCode: HttpStatus.CREATED,
+    success: true,
+    message: 'Registration successful',
+    data: result,
+  });
+}
 
-// register 
-  @Public()
-  @Post('request-register-otp')
-  async requestRegisterOtp(@Body() dto: RequestOtpBodyDto, @Res() res: Response) {
-    const result = await this.authService.requestRegisterOtp(dto.email);
-    return sendResponse(res, {
-      statusCode: HttpStatus.OK,
-      success: true,
-      message: 'OTP sent for registration',
-      data: result,
-    });
-  }
-
-
-  @Public()
-  @Post('register')
-  async register(@Body() dto: RegisterDto, @Res() res: Response) {
-    const result = await this.authService.register(dto);
-    return sendResponse(res, {
-      statusCode: HttpStatus.CREATED,
-      success: true,
-      message: 'Registration successful',
-      data: result,
-    });
-  }
 
 
   // login 

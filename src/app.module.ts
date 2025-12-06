@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
+import { PrismaModule } from './common/service/prisma/prisma.module';
 import { AuthModule } from './module/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './module/user/user.module';
@@ -15,6 +15,10 @@ import { SubscriptionModule } from './module/subscription/subscription.module';
 import { QuestionSetModule } from './module/question-set/question-set.module';
 import { FlashcardModule } from './module/flashcard/flashcard.module';
 import { TicketModule } from './module/ticket/ticket.module';
+import { SettingsModule } from './module/settings/settings.module';
+import { BrandingSettingsModule } from './module/branding-settings/branding-settings.module';
+import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
+import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
 
 
 
@@ -45,7 +49,11 @@ import { TicketModule } from './module/ticket/ticket.module';
     QuestionSetModule,
     FlashcardModule,
     TicketModule,
-    UserModule
+    UserModule,
+    SettingsModule,
+    BrandingSettingsModule,
+    SecuritySettingsModule,
+    PlatformSettingsModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
