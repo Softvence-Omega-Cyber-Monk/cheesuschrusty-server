@@ -18,7 +18,7 @@ export class LessionService {
             data: {
                 title: dto.title,
                 type: dto.type,
-                difficulty: dto.difficulty,
+                // difficulty: dto.difficulty,
                 provider: dto.provider,
                 isPublished: false, 
             },

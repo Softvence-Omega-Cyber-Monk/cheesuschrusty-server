@@ -130,7 +130,7 @@ model Lesson {
   id          Int         @id @default(autoincrement())
   title       String
   type        LessonType
-  difficulty  Difficulty
+  difficulty  Difficulty  @default(B1)
   provider    AIProvider?
   isPublished Boolean     @default(false)
   createdAt   DateTime    @default(now())
@@ -172,7 +172,7 @@ model UserLessonProgress {
 model FlashcardCategory {
   id         Int        @id @default(autoincrement())
   title      String
-  difficulty Difficulty
+  difficulty Difficulty @default(B1)
   cards      Card[]
   createdAt  DateTime @default(now())
 

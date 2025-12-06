@@ -36,7 +36,7 @@ export class FlashcardService {
         return this.prisma.flashcardCategory.create({
             data: {
                 title: dto.title,
-                difficulty: dto.difficulty,
+                // difficulty: dto.difficulty,
             },
         });
     }
