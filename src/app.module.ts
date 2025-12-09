@@ -19,6 +19,7 @@ import { SettingsModule } from './module/settings/settings.module';
 import { BrandingSettingsModule } from './module/branding-settings/branding-settings.module';
 import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
 import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
+import { NotificationSettingsModule } from './module/notification-settings/notification-settings.module';
 
 
 
@@ -53,7 +54,8 @@ import { PlatformSettingsModule } from './module/platform-settings/platform-sett
     SettingsModule,
     BrandingSettingsModule,
     SecuritySettingsModule,
-    PlatformSettingsModule
+    PlatformSettingsModule,
+    NotificationSettingsModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],

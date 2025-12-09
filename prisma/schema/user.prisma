@@ -393,3 +393,26 @@ model PlatformSettings {
 
   @@map("platform_settings")
 }
+
+
+
+
+model NotificationSettings {
+  id                        Int      @id @default(1)
+
+  // Admin Email Notifications
+  newRegistrationAlert      Boolean  @default(true)
+  paymentRelatedAlert       Boolean  @default(true)   // updated field
+  supportTicketAlert        Boolean  @default(true)
+  dailyAnalyticsSummary     Boolean  @default(false)
+
+  // User Communication Toggles
+  welcomeEmailEnabled       Boolean  @default(true)
+  learningRemindersEnabled  Boolean  @default(true)
+  achievementNotifications  Boolean  @default(true)
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("notification_settings")
+}
