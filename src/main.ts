@@ -15,7 +15,7 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: '*', 
+    origin: ["http://localhost:5173","http://localhost:5174","https://cheesuschrustyy.netlify.app"], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
