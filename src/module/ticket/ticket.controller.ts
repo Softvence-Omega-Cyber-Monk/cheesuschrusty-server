@@ -118,13 +118,12 @@ async getTicketMeta(@Res() res: Response) {
   // ADMIN/STAFF: Get single ticket by ID
   // ---------------------------------------------------
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.SUPORT_MANAGER)
-  @ApiOperation({ summary: 'ADMIN: Get a single ticket by ID.' })
+  @Roles(Role.SUPER_ADMIN, Role.SUPORT_MANAGER,Role.USER)
+  @ApiOperation({ summary: 'Get a single ticket by ID.' })
   @ApiParam({ name: 'id', description: 'Ticket ID' })
   @ApiResponse({ status: 200, description: 'Ticket details with messages.' })
   async getSingleTicket(@Req() req: Request, @Res() res: Response, @Param('id') id: string) {
-    const role = req.user!.role as Role;
-    const ticket = await this.ticketService.getSingleTicket(id, role);
+    const ticket = await this.ticketService.getSingleTicket(id);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
