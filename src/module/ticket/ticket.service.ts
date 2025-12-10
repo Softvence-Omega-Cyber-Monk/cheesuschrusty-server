@@ -116,10 +116,7 @@ async createTicket(userId: string, subject: string, message: string) {
     /**
    * Fetch a single ticket by ID (admin/staff dashboard view)
    */
-  async getSingleTicket(ticketId: string, role: Role) {
-    if (!this.isSupportStaff(role)) {
-      throw new ForbiddenException('Unauthorized access to this ticket.');
-    }
+  async getSingleTicket(ticketId: string) {
 
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
