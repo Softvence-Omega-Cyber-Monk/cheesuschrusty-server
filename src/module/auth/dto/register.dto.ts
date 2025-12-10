@@ -1,5 +1,5 @@
 // src/auth/dto/register.dto.ts
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -31,11 +31,8 @@ export class RegisterDto {
   @ApiPropertyOptional({
     example: 30,
     description: 'Daily study goal in minutes',
-    enum: [10, 15, 20, 30, 45, 60],
   })
   @IsOptional()
-  @IsIn([10, 15, 20, 30, 45, 60], {
-    message: 'Daily goal must be 10, 15, 20, 30, 45 or 60 minutes',
-  })
+  @IsInt({ message: 'Daily goal must be an integer' })
   dailyGoalMinutes?: number;
 }
