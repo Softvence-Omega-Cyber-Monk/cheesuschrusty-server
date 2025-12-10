@@ -207,7 +207,7 @@ async requestResetCode(dto: RequestResetCodeDto) {
     html, // send HTML instead of plain text
   });
 
-  return { message: 'Reset code sent',code };
+  return { message: 'Reset code sent'};
 }
 
 

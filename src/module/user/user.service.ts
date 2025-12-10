@@ -3,7 +3,7 @@ import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { Role, SubscriptionPlan } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
-
+import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
@@ -214,19 +214,29 @@ const activePro = user.subscriptions.some(
   /**
    * Create a new platform user (content manager / support manager)
    */
-  async createPlatformUser(
-   dto:CreatePlatformUserDto
-  ) {
-    if (![Role.CONTENT_MANAGER, Role.SUPORT_MANAGER].includes(dto.role)) {
-      throw new ForbiddenException('Invalid role for platform user');
-    }
-
-    const user = await this.prisma.user.create({
-      data: { email:dto.email, name:dto.name, role:dto.role, isActive: true },
-    });
-
-    return user;
+async createPlatformUser(dto: CreatePlatformUserDto) {
+  if (![Role.CONTENT_MANAGER, Role.SUPORT_MANAGER].includes(dto.role)) {
+    throw new ForbiddenException('Invalid role for platform user');
   }
+
+  const hashedPassword = await bcrypt.hash(
+    dto.password,
+    parseInt(process.env.SALT_ROUND!)
+  );
+
+  const user = await this.prisma.user.create({
+    data: { 
+      email: dto.email, 
+      name: dto.name, 
+      role: dto.role, 
+      password: hashedPassword,
+      isActive: true,
+    },
+  });
+
+  return user;
+}
+
 
 
   async getUserMetaData() {
