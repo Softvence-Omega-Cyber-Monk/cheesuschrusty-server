@@ -372,31 +372,37 @@ async uploadCsv(
     });
   }
 
-  /**
-   * Endpoint to manually pause an active session.
-   */
-  @Patch('session/pause')
-  @Roles(Role.USER) 
-  @ApiOperation({ summary: 'USER: Manually pause the current active session.' })
-  @ApiResponse({ status: 200, description: 'Session paused successfully.' })
-  async pauseSession(
-    @Req() req: Request,
-    @Res() res: Response,
-    @Body() dto:PauseSessionDto, // Expected body structure
-  ) {
-    const userId = req.user!.id; 
-    
-    if (!dto.sessionId) {
-        throw new BadRequestException('Session ID is required to pause the session.');
-    }
+@Patch('session/pause')
+@Roles(Role.USER)
+@ApiOperation({ summary: 'USER: Pause current flashcard session and save current timer.' })
+@ApiResponse({ status: 200, description: 'Session paused and time saved successfully.' })
+async pauseSession(
+  @Req() req: Request,
+  @Body() dto: PauseSessionDto,
+) {
+  const userId = req.user!.id;
 
-    await this.flashcardService.pauseSession(userId, dto.sessionId);
+  await this.flashcardService.pauseSession(
+    userId,
+    dto.sessionId,
+    dto.currentTimeSeconds,
+  );
 
-    return sendResponse(res, {
-      statusCode: HttpStatus.OK,
-      success: true,
-      message: 'Flashcard session paused successfully.',
-      data:null
-    });
-  }
+  return {
+    success: true,
+    message: 'Session paused successfully',
+    data: {
+      savedTimeSeconds: dto.currentTimeSeconds,
+      formattedTime: this.formatTime(dto.currentTimeSeconds),
+    },
+  };
+}
+
+
+// Optional helper (you can move to service if you want)
+private formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
 }

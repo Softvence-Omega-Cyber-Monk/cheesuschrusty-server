@@ -17,6 +17,8 @@ class CardInSessionDto {
 
   @ApiProperty({ description: 'The current calculated interval (days) for the next review based on SRS.', example: 6 })
   currentInterval: number;
+
+  
 }
 
 /**
@@ -49,6 +51,13 @@ export class StartSessionResponseDto {
 
   @ApiProperty({ type: CardInSessionDto, description: 'The card currently presented to the user.' })
   currentCard: CardInSessionDto;
+
+  // TIME TRACKING — REQUIRED
+  @ApiProperty({ description: 'Seconds spent in session', example: 523 })
+  totalTimeSeconds: number;
+
+  @ApiProperty({ description: 'Formatted MM:SS', example: '08:43' })
+  formattedTime: string;
 }
 
 /**
@@ -68,6 +77,14 @@ export class GradeCardResponseDto {
     description: 'The next card to be presented. Null if sessionFinished is true.' 
   })
   currentCard: CardInSessionDto | null; // Renamed from nextCard
+
+
+  // TIME TRACKING — REQUIRED
+  @ApiProperty({ description: 'Updated time after grading', example: 531 })
+  totalTimeSeconds: number;
+
+  @ApiProperty({ description: 'Formatted MM:SS', example: '08:51' })
+  formattedTime: string;
 }
 
 

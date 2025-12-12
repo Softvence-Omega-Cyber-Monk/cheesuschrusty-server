@@ -230,6 +230,7 @@ async createPlatformUser(dto: CreatePlatformUserDto) {
       name: dto.name, 
       role: dto.role, 
       password: hashedPassword,
+      emailVerified: true,
       isActive: true,
     },
   });
