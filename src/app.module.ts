@@ -21,6 +21,9 @@ import { SecuritySettingsModule } from './module/security-settings/security-sett
 import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
 import { NotificationSettingsModule } from './module/notification-settings/notification-settings.module';
 import { PracticeSessionModule } from './module/practice-session/practice-session.module';
+import { CefrConfidenceService } from './common/service/cefr/cefr-confidence.service';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AnalyticsModule } from './module/analytics/analytics.module';
 
 
 
@@ -39,6 +42,7 @@ import { PracticeSessionModule } from './module/practice-session/practice-sessio
         from: process.env.EMAIL_USER,
       },
     }),
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
@@ -57,9 +61,10 @@ import { PracticeSessionModule } from './module/practice-session/practice-sessio
     SecuritySettingsModule,
     PlatformSettingsModule,
     NotificationSettingsModule,
-    PracticeSessionModule
+    PracticeSessionModule,
+    AnalyticsModule
   ],
   controllers: [AppController],
-  providers: [AppService, SeederService],
+  providers: [AppService, SeederService,CefrConfidenceService],
 })
 export class AppModule {}

@@ -121,7 +121,8 @@ model User {
   lockedUntil             DateTime?
 
   // Relations
-practiceSessions        PracticeSession[]
+  practiceSessions        PracticeSession[]
+  earnedBadges            UserBadge[]
 cefrConfidence          CefrConfidenceCache[]
 confidenceQueue         ConfidenceUpdateQueue[]
   flashcardProgress       FlashcardProgress[]
@@ -133,6 +134,52 @@ confidenceQueue         ConfidenceUpdateQueue[]
   supportMessages         SupportTicketMessage[]   @relation("UserSentMessages")
 
   @@map("users")
+}
+
+
+
+
+
+
+
+
+// ------------------------
+// BADGES SYSTEM
+// ------------------------
+
+model Badge {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique // e.g., "7 Day Streak"
+  description String
+  icon        String   // emoji or icon name
+  type        BadgeType
+  threshold   Int?     // for streak, lessons, etc.
+  skillArea   SkillArea? // for skill-specific badges
+
+  earnedBy    UserBadge[]
+
+  @@map("badges")
+}
+
+enum BadgeType {
+  STREAK
+  LESSONS
+  ACCURACY
+  TIME
+  SKILL_MASTERY
+  CITIZENSHIP_READY
+}
+
+model UserBadge {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   Int
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
 }
 
 // ------------------------
