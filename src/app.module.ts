@@ -20,6 +20,7 @@ import { BrandingSettingsModule } from './module/branding-settings/branding-sett
 import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
 import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
 import { NotificationSettingsModule } from './module/notification-settings/notification-settings.module';
+import { PracticeSessionModule } from './module/practice-session/practice-session.module';
 
 
 
@@ -55,7 +56,8 @@ import { NotificationSettingsModule } from './module/notification-settings/notif
     BrandingSettingsModule,
     SecuritySettingsModule,
     PlatformSettingsModule,
-    NotificationSettingsModule
+    NotificationSettingsModule,
+    PracticeSessionModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
