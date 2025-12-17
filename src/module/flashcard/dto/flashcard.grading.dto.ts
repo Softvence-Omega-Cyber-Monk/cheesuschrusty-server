@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsUUID, IsString, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsInt, Min, Max, IsUUID, IsString, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 /**
  * DTO for the payload when a user submits a grade for a card review.
@@ -32,6 +32,21 @@ export class GradeCardDto {
   @Min(0)
   @Max(3)
   grade: number; // 0=Forgot, 1=Unsure, 2=Good, 3=Perfect
+
+
+
+// ... existing fields
+  @ApiProperty({
+    description: 'Current timer value in seconds (REQUIRED only on the LAST card of the session)',
+    example: 450,
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  currentTimeSeconds?: number; 
+
+
 }
 
 /**

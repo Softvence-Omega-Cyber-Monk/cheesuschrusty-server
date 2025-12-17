@@ -26,20 +26,13 @@ enum LessonType {
 }
 
 enum SubCategoryType {
-  // Reading
-  MAIN_PASSAGE 
-
-  // Listening
+  MAIN_PASSAGE
   DIALOGUE_SEQUENCING
   DICTATION_EXERCISE
   AUDIO_COMPREHENSION
-
-  // Writing
   GRAMMAR_PRACTICE
   COMPLETE_THE_SENTENCES
   SHORT_ESSAY
-
-  // Speaking
   READING_ALOUD
   CONVERSATION_PRACTICE
   PRONUNCIATION_PRACTICE
@@ -73,6 +66,25 @@ enum AIProvider {
   GROK
 }
 
+enum SkillArea {
+  reading
+  listening
+  writing
+  speaking
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum PerformanceTrend {
+  improving
+  stable
+  declining
+}
+
 // ------------------------
 // USER
 // ------------------------
@@ -104,14 +116,14 @@ model User {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
+  failedLoginAttempts     Int      @default(0)
+  lastLoginAt             DateTime?
+  lockedUntil             DateTime?
 
-   // --- New fields for SecuritySettings ---
-  failedLoginAttempts     Int      @default(0)      // Track failed login attempts
-  lastLoginAt             DateTime?                     // Track last login time (for session timeout)
-  lockedUntil         DateTime?
-
-  // Relations (no onDelete here)
-  lessonProgress          UserLessonProgress[]
+  // Relations
+practiceSessions        PracticeSession[]
+cefrConfidence          CefrConfidenceCache[]
+confidenceQueue         ConfidenceUpdateQueue[]
   flashcardProgress       FlashcardProgress[]
   notifications           UserNotification[]
   studyPlan               StudyPlan?
@@ -127,50 +139,61 @@ model User {
 // LESSONS
 // ------------------------
 model Lesson {
-  id          Int         @id @default(autoincrement())
-  title       String
-  type        LessonType
-  difficulty  Difficulty  @default(B1)
-  provider    AIProvider?
-  isPublished Boolean     @default(false)
-  createdAt   DateTime    @default(now())
+  id           Int          @id @default(autoincrement())
+  title        String
+  type         LessonType
+  difficulty   Difficulty   @default(B1)
+  provider     AIProvider?
+  isPublished  Boolean      @default(false)
+  createdAt    DateTime     @default(now())
 
   questionSets QuestionSet[]
-  userProgress UserLessonProgress[]
+  practiceSessions PracticeSession[]  // ← ADD THIS LINE (for future use)
 
   @@map("lessons")
 }
 
 model QuestionSet {
-  id              Int         @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   lessonId        Int
-  lesson          Lesson      @relation(fields: [lessonId], references: [id])
+  lesson          Lesson          @relation(fields: [lessonId], references: [id])
   subCategoryType SubCategoryType
-  prompt          String      @db.Text
+  prompt          String          @db.Text
   content         Json
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime        @default(now())
 
   @@unique([lessonId, subCategoryType])
   @@map("question_sets")
 }
 
-model UserLessonProgress {
-  id          Int     @id @default(autoincrement())
-  userId      String
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessonId    Int
-  lesson      Lesson  @relation(fields: [lessonId], references: [id])
-  score       Int?
-  completedAt DateTime @default(now())
+// ------------------------
+// PRACTICE SESSION (Core tracking)
+// ------------------------
+model PracticeSession {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lessonId        Int?      
+  lesson          Lesson?   @relation(fields: [lessonId], references: [id])  // ← ADD THIS LINE
 
-  @@unique([userId, lessonId])
+  skillArea       SkillArea
+  accuracy        Float
+  durationSeconds Int
+  xpEarned        Int
+  completedAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([skillArea])
+  @@index([completedAt(desc)])
+  @@map("practice_sessions")
 }
 
 // ------------------------
 // FLASHCARDS
 // ------------------------
 model FlashcardCategory {
-  id         Int        @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   title      String
   difficulty Difficulty @default(B1)
   cards      Card[]
@@ -208,16 +231,16 @@ model FlashcardProgress {
 }
 
 model ActiveFlashcardSession {
-  id            String   @id @default(uuid())
-  userId        String
-  user          User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
-  categoryName  String
-  status        SessionStatus @default(ACTIVE)
-  totalTimeSeconds Int      @default(0)
-  sessionData   Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  dateCompleted DateTime?
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  categoryName     String
+  status           SessionStatus @default(ACTIVE)
+  totalTimeSeconds Int           @default(0)
+  sessionData      Json
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  dateCompleted    DateTime?
 
   @@map("active_flashcard_sessions")
 }
@@ -240,8 +263,8 @@ model StudyPlan {
 }
 
 model Subscription {
-  id                   String     @id @default(uuid())
-  userId               String     @unique
+  id                   String           @id @default(uuid())
+  userId               String           @unique
   stripeCustomerId     String?
   stripeSubscriptionId String?
   planAlias            String?
@@ -249,8 +272,8 @@ model Subscription {
   status               String
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
-  createdAt            DateTime @default(now())
-  user                 User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime         @default(now())
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
@@ -263,8 +286,8 @@ model Plan {
   stripePriceId String
   price         Float
   interval      String
-  currency      String  @default("USD")
-  isActive      Boolean @default(true)
+  currency      String   @default("USD")
+  isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -281,7 +304,7 @@ model SupportTicket {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  SupportTicketMessage[]
 
   @@map("support_tickets")
@@ -291,12 +314,10 @@ model SupportTicketMessage {
   id        String   @id @default(uuid())
   ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
   senderId  String
-  sender    User @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
+  sender    User          @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   message   String
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
 }
 
 // ------------------------
@@ -308,110 +329,110 @@ model UserNotification {
   title     String
   message   String
   type      String
-  read      Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notifications")
 }
 
+// ------------------------
+// CEFR CONFIDENCE SYSTEM
+// ------------------------
+model CefrConfidenceCache {
+  id                 String           @id @default(uuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillArea          SkillArea
 
+  cefrLevel          Difficulty       @default(B1)
+  confidenceLower    Float            @default(0)
+  confidenceUpper    Float            @default(0)
+  confidenceLevel    ConfidenceLevel  @default(LOW)
+  performanceTrend   PerformanceTrend?
 
+  sessionsAnalyzed   Int              @default(0)
+  lastCalculatedAt   DateTime         @default(now())
 
+  @@unique([userId, skillArea])
+  @@map("cefr_confidence_cache")
+}
 
+model ConfidenceUpdateQueue {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)  // ← ADD THIS LINE
+  skillArea  SkillArea
+  trigger    String    @default("session_milestone")
+  queuedAt   DateTime  @default(now())
+  status     String    @default("pending")
 
+  @@unique([userId, skillArea])
+  @@map("confidence_update_queue")
+}
 
-
-//settings
+// ------------------------
+// SETTINGS
+// ------------------------
 model BrandingSettings {
   id              Int      @id @default(1)
   platformLogoUrl String?
   faviconUrl      String?
-  
   primaryColor    String   @default("#003213")
   secondaryColor  String   @default("#3F83F5")
   accentColor     String   @default("#0e0ebf")
-
   headingFont     String   @default("Inter")
   bodyFont        String   @default("Inter")
-
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@map("branding_settings")
 }
 
-
-
-
 model SecuritySettings {
   id                        Int      @id @default(1)
-
-  // Password Policy
   minPasswordLength         Int      @default(8)
   passwordExpiryDays        Int      @default(90)
   requireSpecialChars       Boolean  @default(true)
   requireUppercaseLetters   Boolean  @default(true)
-
-  // Session Management
-  sessionTimeoutDays        Int      @default(3) 
+  sessionTimeoutDays        Int      @default(3)
   maxLoginAttempts          Int      @default(5)
-
-  // Data Privacy
   dataRetentionPolicy       Boolean  @default(true)
   dataRetentionDays         Int      @default(365)
   gdprComplianceMode        Boolean  @default(false)
-
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
   @@map("security_settings")
 }
 
-
-
 model PlatformSettings {
-  id                  Int      @id @default(1)
-
-  platformName        String   @default("ItalianMaster")
-  platformTitle       String?
-  platformDescription String?  @db.Text
-
-  defaultLanguage     String   @default("English")
-  defaultTimezone     String   @default("Europe/Rome")
-
-  // Feature toggles
-  allowNewRegistration Boolean @default(true)
-  
-  freeTrialEnabled     Boolean @default(true)   // <--- NEW (toggle)
-  freeTrialPeriodDays  Int     @default(7)      // <--- number field
-
-  maintenanceMode      Boolean @default(false)
-
+  id                   Int      @id @default(1)
+  platformName         String   @default("ItalianMaster")
+  platformTitle        String?
+  platformDescription  String?  @db.Text
+  defaultLanguage      String   @default("English")
+  defaultTimezone      String   @default("Europe/Rome")
+  allowNewRegistration Boolean  @default(true)
+  freeTrialEnabled     Boolean  @default(true)
+  freeTrialPeriodDays  Int      @default(7)
+  maintenanceMode      Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   @@map("platform_settings")
 }
 
-
-
-
 model NotificationSettings {
   id                        Int      @id @default(1)
-
-  // Admin Email Notifications
   newRegistrationAlert      Boolean  @default(true)
-  paymentRelatedAlert       Boolean  @default(true)   // updated field
+  paymentRelatedAlert       Boolean  @default(true)
   supportTicketAlert        Boolean  @default(true)
   dailyAnalyticsSummary     Boolean  @default(false)
-
-  // User Communication Toggles
   welcomeEmailEnabled       Boolean  @default(true)
   learningRemindersEnabled  Boolean  @default(true)
   achievementNotifications  Boolean  @default(true)
-
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
