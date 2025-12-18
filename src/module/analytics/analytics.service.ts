@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
+import { LessonType, SkillArea } from '@prisma/client';
 
 
 @Injectable()
@@ -12,6 +13,103 @@ export class AnalyticsService {
     private practiceSessionService: PracticeSessionService,
     private cefrConfidenceService: CefrConfidenceService,
   ) {}
+
+
+async getOverviewDashboard(userId: string) {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      subscriptions: {
+        where: { status: 'active' },
+        take: 1,
+      },
+    },
+  });
+
+  if (!user) throw new Error('User not found');
+
+  const isPro = user.subscriptions.length > 0 && 
+    user.subscriptions[0].planAlias?.includes('PRO');
+
+  // This week minutes (as requested — not lifetime)
+  const thisWeekMinutes = await this.practiceSessionService.getWeeklyMinutes(userId);
+
+  // Total available lessons (dynamic from DB)
+  const totalAvailableLessons = await this.prisma.lesson.count({
+    where: { isPublished: true },
+  });
+
+  // Lessons completed (lifetime)
+  const lessonsCompleted = user.lessonsCompleted;
+  const lessonsProgress = totalAvailableLessons > 0 
+    ? Math.round((lessonsCompleted / totalAvailableLessons) * 100) 
+    : 0;
+
+  // Weekly accuracy
+  const weeklyAccuracy = await this.practiceSessionService.getWeeklyAccuracy(userId) || 0;
+
+  // Words learned (total)
+  const wordsLearned = user.wordsLearned;
+
+  // Current streak
+  const currentStreak = user.currentStreak;
+
+  // This week lessons
+  const thisWeekLessons = await this.practiceSessionService.getWeeklyLessons(userId);
+
+  // Recent achievements
+  const recentAchievements = await this.getRecentAchievements(userId);
+
+  // Practice Areas — real completed lessons per skill
+  const practiceAreas = await Promise.all(
+    ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
+      const completed = await this.prisma.practiceSession.count({
+        where: {
+          userId,
+          skillArea: skill as SkillArea,
+          lessonId: { not: null }, // only real lessons
+        },
+      });
+
+      const total = await this.prisma.lesson.count({
+        where: {
+          isPublished: true,
+          type: skill.toUpperCase() as LessonType,
+        },
+      });
+
+      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        skillArea: skill,
+        lessonsCompleted: completed,
+        totalLessons: total,
+        progress,
+      };
+    })
+  );
+
+  return {
+    isPro,
+    welcomeMessage: `Welcome Back, ${user.name || 'Learner'}! 👋`,
+    weeklyMinutes: thisWeekMinutes, // last week only
+    lessons: {
+      completed: lessonsCompleted,
+      total: totalAvailableLessons,
+      progress: lessonsProgress,
+    },
+    accuracyRate: Math.round(weeklyAccuracy),
+    wordsLearned,
+    currentStreak,
+    thisWeek: {
+      minutes: thisWeekMinutes,
+      lessons: thisWeekLessons,
+    },
+    practiceAreas, // 4 skills with real progress
+    recentAchievements,
+  };
+}
+  
 
   async getAdvancedAnalytics(userId: string) {
     // 1. User basic stats

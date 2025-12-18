@@ -38,5 +38,24 @@ export class AnalyticsController {
   }
 
 
+  // In AnalyticsController
+@Get('overview')
+@Roles(Role.USER)
+@ApiOperation({ summary: 'Get dashboard overview for free/pro users' })
+async getOverviewDashboard(
+  @Req() req: any,
+  @Res() res: Response,
+) {
+  const userId = req.user.id;
+  const data = await this.analyticsService.getOverviewDashboard(userId);
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: 'Dashboard overview loaded successfully',
+    data,
+  });
+}
+
   
 }
