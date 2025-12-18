@@ -57,5 +57,25 @@ async getOverviewDashboard(
   });
 }
 
+
+
+@Get('practice')
+@Roles(Role.USER)
+@ApiOperation({ summary: 'Get practice dashboard data' })
+async getPracticeDashboard(
+  @Req() req: any,
+  @Res() res: Response,
+) {
+  const userId = req.user.id;
+  const data = await this.analyticsService.getPracticeDashboard(userId);
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: 'Practice dashboard loaded successfully',
+    data,
+  });
+}
+
   
 }

@@ -109,6 +109,113 @@ async getOverviewDashboard(userId: string) {
     recentAchievements,
   };
 }
+
+
+
+/**
+ * Practice Dashboard — shown when user taps "Practice"
+ * Daily goal + today's stats + skill cards
+ */
+async getPracticeDashboard(userId: string) {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) throw new Error('User not found');
+
+  // Daily goal from user
+  const dailyGoal = user.dailyGoalMinutes || 20;
+
+  // Today's minutes
+  const minutesToday = await this.practiceSessionService.getTodayMinutes(userId);
+  const dailyProgress = Math.min(100, Math.round((minutesToday / dailyGoal) * 100));
+
+  // Today's completed lessons (real lessons only)
+  const todayLessons = await this.prisma.practiceSession.count({
+    where: {
+      userId,
+      lessonId: { not: null },
+      completedAt: {
+        gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        lt: new Date(new Date().setHours(24, 0, 0, 0)),
+      },
+    },
+  });
+
+  // Today's average accuracy
+  const todaySessions = await this.prisma.practiceSession.findMany({
+    where: {
+      userId,
+      completedAt: {
+        gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        lt: new Date(new Date().setHours(24, 0, 0, 0)),
+      },
+    },
+    select: { accuracy: true },
+  });
+
+  const todayAccuracy = todaySessions.length > 0
+    ? Math.round(todaySessions.reduce((sum, s) => sum + s.accuracy, 0) / todaySessions.length)
+    : 0;
+
+  // Practice Areas — lessons completed per skill
+  const practiceAreas = await Promise.all(
+    ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
+      const completed = await this.prisma.practiceSession.count({
+        where: {
+          userId,
+          skillArea: skill as SkillArea,
+          lessonId: { not: null },
+        },
+      });
+
+      const total = await this.prisma.lesson.count({
+        where: {
+          isPublished: true,
+          type: skill.toUpperCase() as LessonType,
+        },
+      });
+
+      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        skillArea: skill,
+        title: this.getSkillTitle(skill as SkillArea),
+        lessonsCompleted: completed,
+        totalLessons: total,
+        progress,
+      };
+    })
+  );
+
+  return {
+    dailyGoalProgress: {
+      minutesToday,
+      dailyGoal,
+      progress: dailyProgress,
+      message: minutesToday >= dailyGoal
+        ? 'Daily goal achieved! 🎉'
+        : `${dailyGoal - minutesToday} min left to reach your goal`,
+    },
+    todayStats: {
+      sessions: todaySessions.length,
+      studyTimeMinutes: minutesToday,
+      averageAccuracy: todayAccuracy,
+    },
+    practiceAreas,
+  };
+}
+
+// Helper for nice titles
+private getSkillTitle(skill: SkillArea): string {
+  const titles = {
+    reading: 'Reading Comprehension',
+    listening: 'Audio Comprehension',
+    writing: 'Composition Practice',
+    speaking: 'AI Pronunciation Practice',
+  };
+  return titles[skill] || skill;
+}
   
 
   async getAdvancedAnalytics(userId: string) {
