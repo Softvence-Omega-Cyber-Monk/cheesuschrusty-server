@@ -24,6 +24,7 @@ import { PracticeSessionModule } from './module/practice-session/practice-sessio
 import { CefrConfidenceService } from './common/service/cefr/cefr-confidence.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AnalyticsModule } from './module/analytics/analytics.module';
+import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
 
 
 
@@ -62,7 +63,8 @@ import { AnalyticsModule } from './module/analytics/analytics.module';
     PlatformSettingsModule,
     NotificationSettingsModule,
     PracticeSessionModule,
-    AnalyticsModule
+    AnalyticsModule,
+    LeaderboardModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService,CefrConfidenceService],

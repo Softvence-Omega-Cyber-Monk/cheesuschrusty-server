@@ -218,7 +218,7 @@ private getMotivationalMessage(data: any): string {
   if (data.performanceTrend === 'improving') {
     return 'Amazing improvement! You\'re getting stronger!';
   }
-  return 'Daily practice will get you to B1 soon InshaAllah!';
+  return 'Daily practice will get you to B1 soon!';
 }
 
 

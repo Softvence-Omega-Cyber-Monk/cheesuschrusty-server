@@ -153,8 +153,8 @@ private async getWeeklyPerformance(userId: string) {
 
     return sessions.map(s => ({
       title: s.lesson ? `${s.lesson.type} - ${s.lesson.title}` : 'Flashcard Practice',
-      duration: `${Math.round(s.durationSeconds / 60)} min`,
-      accuracy: `${s.accuracy}%`,
+      duration: `${Math.floor(s.durationSeconds / 60)} min`,
+      accuracy: `${Math.floor(s.accuracy)}%`,
       date: new Date(s.completedAt).toLocaleDateString(),
     }));
   }
