@@ -131,11 +131,17 @@ model User {
   lastLoginAt             DateTime?
   lockedUntil             DateTime?
 
+
+
+weeklyUpdateEnabled         Boolean   @default(true)
+streakRemindersEnabled      Boolean   @default(true)
+achievementAlertsEnabled    Boolean   @default(true)
+
   // Relations
   practiceSessions        PracticeSession[]
   earnedBadges            UserBadge[]
-cefrConfidence          CefrConfidenceCache[]
-confidenceQueue         ConfidenceUpdateQueue[]
+  cefrConfidence          CefrConfidenceCache[]
+  confidenceQueue         ConfidenceUpdateQueue[]
   flashcardProgress       FlashcardProgress[]
   notifications           UserNotification[]
   studyPlan               StudyPlan?

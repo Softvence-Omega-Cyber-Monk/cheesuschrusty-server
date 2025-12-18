@@ -25,6 +25,7 @@ import { CefrConfidenceService } from './common/service/cefr/cefr-confidence.ser
 import { ScheduleModule } from '@nestjs/schedule';
 import { AnalyticsModule } from './module/analytics/analytics.module';
 import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
+import { CloudinaryService } from './common/service/cloudinary/cloudinary.service';
 
 
 
@@ -67,6 +68,6 @@ import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
     LeaderboardModule
   ],
   controllers: [AppController],
-  providers: [AppService, SeederService,CefrConfidenceService],
+  providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService],
 })
 export class AppModule {}

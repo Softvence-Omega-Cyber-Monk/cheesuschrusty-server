@@ -1,11 +1,13 @@
-import { Controller, Get, Query, Param, Post, Body, Patch, Delete, Req, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, Param, Post, Body, Patch, Delete, Req, Res, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ApiTags, ApiOperation,  ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation,  ApiQuery, ApiParam, ApiBody, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { Role, SubscriptionPlan } from '@prisma/client';
 import { UserService } from './user.service';
 import sendResponse from '../utils/sendResponse';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateProfileDto } from './dto/update-user.dto';
 
 
 @ApiTags('User Management')
@@ -145,6 +147,62 @@ export class UserController {
     });
   }
 
+
+
+@Patch('profile')
+@Roles(Role.USER)
+@UseInterceptors(FileInterceptor('avatar'))
+@ApiOperation({ 
+  summary: 'Update user profile',
+  description: 'Update name, avatar, and notification preferences'
+})
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', example: 'Marco Rossi' },
+      weeklyUpdateEnabled: { 
+        type: 'boolean', 
+        example: true,
+        description: 'Receive weekly progress reports'
+      },
+      streakRemindersEnabled: { 
+        type: 'boolean', 
+        example: true,
+        description: 'Get alerts to maintain your streak'
+      },
+      achievementAlertsEnabled: { 
+        type: 'boolean', 
+        example: true,
+        description: 'Get notified when you earn badges'
+      },
+      avatar: { type: 'string', format: 'binary' },
+    },
+  },
+})
+@ApiResponse({ status: 200, description: 'Profile updated successfully' })
+@ApiResponse({ status: 400, description: 'Bad request' })
+@ApiResponse({ status: 401, description: 'Unauthorized' })
+async updateProfile(
+  @Req() req: any,
+  @UploadedFile() file: Express.Multer.File,
+  @Body() dto: UpdateProfileDto,
+  @Res() res: Response,
+) {
+  const userId = req.user.id;
+  const result = await this.userService.updateProfile(userId, dto, file);
+
+  return sendResponse(res, {
+    statusCode: HttpStatus.OK,
+    success: true,
+    message: result.message,
+    data: result.user,
+  });
+}
+
+
+
   @Delete('platform-users/:id')
   @Roles(Role.SUPER_ADMIN)
   async deletePlatformUser(@Res() res: Response, @Param('id') id: string, @Req() req: Request) {
@@ -156,4 +214,9 @@ export class UserController {
       data: result,
     });
   }
+
+
+
+
+  
 }

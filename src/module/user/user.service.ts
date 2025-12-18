@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { Role, SubscriptionPlan } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
 import * as bcrypt from 'bcrypt';
+import { CloudinaryService } from 'src/common/service/cloudinary/cloudinary.service';
+import { UpdateProfileDto } from './dto/update-user.dto';
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
  /**
    * Get all students with optional filters, search, and pagination
    */
@@ -267,4 +271,63 @@ async createPlatformUser(dto: CreatePlatformUserDto) {
       proUsers,
     };
   }
+
+
+
+
+async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer.File) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) throw new BadRequestException('User not found');
+
+    let avatarUrl = user.avatar;
+
+    // Handle avatar upload
+    if (file) {
+      // Delete old avatar if exists
+      if (user.avatar) {
+        const publicId = user.avatar.split('/').pop()?.split('.')[0];
+        if (publicId) await this.cloudinaryService.deleteImage(publicId);
+      }
+
+      // Upload new
+      avatarUrl = await this.cloudinaryService.uploadImage(file, 'avatars');
+    }
+
+    // Update user
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+   data: {
+  name: dto.name,
+  avatar: avatarUrl,
+  weeklyUpdateEnabled: dto.weeklyUpdateEnabled,
+  streakRemindersEnabled: dto.streakRemindersEnabled,
+  achievementAlertsEnabled: dto.achievementAlertsEnabled,
+},
+
+// In select
+select: {
+  id: true,
+  name: true,
+  email: true,
+  avatar: true,
+  weeklyUpdateEnabled: true,
+  streakRemindersEnabled: true,
+  achievementAlertsEnabled: true,
+},
+    });
+
+    return {
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser,
+    };
+  }
+
+
+
+
+
 }
