@@ -6,3 +6,507 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
+
+
+// ------------------------
+// ENUMS
+// ------------------------
+
+enum Role {
+  USER
+  CONTENT_MANAGER
+  SUPORT_MANAGER
+  SUPER_ADMIN
+}
+
+enum Difficulty {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum LessonType {
+  READING
+  WRITING
+  LISTENING
+  SPEAKING
+}
+
+enum SubCategoryType {
+  MAIN_PASSAGE
+  DIALOGUE_SEQUENCING
+  DICTATION_EXERCISE
+  AUDIO_COMPREHENSION
+  GRAMMAR_PRACTICE
+  COMPLETE_THE_SENTENCES
+  SHORT_ESSAY
+  READING_ALOUD
+  CONVERSATION_PRACTICE
+  PRONUNCIATION_PRACTICE
+}
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  FINISHED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum TicketStatus {
+  OPEN
+  INPROGRESS
+  RESOLVED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AIProvider {
+  OPENAI
+  GROK
+}
+
+enum SkillArea {
+  reading
+  listening
+  writing
+  speaking
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum PerformanceTrend {
+  improving
+  stable
+  declining
+}
+
+// ------------------------
+// USER
+// ------------------------
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  emailVerified Boolean    @default(false)
+  password      String?
+  name          String?
+  avatar        String?
+  isActive      Boolean    @default(true)
+  hasUsedTrial  Boolean    @default(false)
+  role          Role       @default(USER)
+
+  nativeLang    String     @default("English")
+  targetLang    String     @default("Italian")
+  currentLevel  Difficulty @default(B1)
+
+  xp                      Int      @default(0)
+  currentStreak           Int      @default(0)
+  longestStreak           Int      @default(0)
+  lastPracticeDate        DateTime?
+  totalMinutesStudied     Int      @default(0)
+  wordsLearned            Int      @default(0)
+  lessonsCompleted        Int      @default(0)
+  dailyGoalMinutes        Int      @default(20)
+  timezone                String?
+  stripeCustomerId        String?  @unique
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  failedLoginAttempts     Int      @default(0)
+  lastLoginAt             DateTime?
+  lockedUntil             DateTime?
+
+
+
+weeklyUpdateEnabled         Boolean   @default(true)
+streakRemindersEnabled      Boolean   @default(true)
+achievementAlertsEnabled    Boolean   @default(true)
+
+  // Relations
+  practiceSessions        PracticeSession[]
+  earnedBadges            UserBadge[]
+  cefrConfidence          CefrConfidenceCache[]
+  confidenceQueue         ConfidenceUpdateQueue[]
+  flashcardProgress       FlashcardProgress[]
+  notifications           UserNotification[]
+  studyPlan               StudyPlan?
+  subscriptions           Subscription[]
+  supportTickets          SupportTicket[]
+  activeFlashcardSessions ActiveFlashcardSession[] @relation("UserSessions")
+  supportMessages         SupportTicketMessage[]   @relation("UserSentMessages")
+
+  @@map("users")
+}
+
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+
+
+
+
+
+// ------------------------
+// BADGES SYSTEM
+// ------------------------
+
+model Badge {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique // e.g., "7 Day Streak"
+  description String
+  icon        String   // emoji or icon name
+  type        BadgeType
+  threshold   Int?     // for streak, lessons, etc.
+  skillArea   SkillArea? // for skill-specific badges
+
+  earnedBy    UserBadge[]
+
+  @@map("badges")
+}
+
+enum BadgeType {
+  STREAK
+  LESSONS
+  ACCURACY
+  TIME
+  SKILL_MASTERY
+  CITIZENSHIP_READY
+}
+
+model UserBadge {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   Int
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// ------------------------
+// LESSONS
+// ------------------------
+model Lesson {
+  id           Int          @id @default(autoincrement())
+  title        String
+  type         LessonType
+  difficulty   Difficulty   @default(B1)
+  provider     AIProvider?
+  isPublished  Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+
+  questionSets QuestionSet[]
+  practiceSessions PracticeSession[]  // ← ADD THIS LINE (for future use)
+
+  @@map("lessons")
+}
+
+model QuestionSet {
+  id              Int             @id @default(autoincrement())
+  lessonId        Int
+  lesson          Lesson          @relation(fields: [lessonId], references: [id])
+  subCategoryType SubCategoryType
+  prompt          String          @db.Text
+  content         Json
+  createdAt       DateTime        @default(now())
+
+  @@unique([lessonId, subCategoryType])
+  @@map("question_sets")
+}
+
+// ------------------------
+// PRACTICE SESSION (Core tracking)
+// ------------------------
+model PracticeSession {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lessonId        Int?      
+  lesson          Lesson?   @relation(fields: [lessonId], references: [id])  // ← ADD THIS LINE
+
+  skillArea       SkillArea
+  accuracy        Float
+  durationSeconds Int
+  xpEarned        Int
+  completedAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([skillArea])
+  @@index([completedAt(desc)])
+  @@map("practice_sessions")
+}
+
+// ------------------------
+// FLASHCARDS
+// ------------------------
+model FlashcardCategory {
+  id         Int      @id @default(autoincrement())
+  title      String
+  difficulty Difficulty @default(B1)
+  cards      Card[]
+  createdAt  DateTime @default(now())
+
+  @@map("flashcard_categories")
+}
+
+model Card {
+  id         Int               @id @default(autoincrement())
+  categoryId Int
+  category   FlashcardCategory @relation(fields: [categoryId], references: [id])
+  frontText  String
+  backText   String
+  progress   FlashcardProgress[]
+
+  @@map("cards")
+}
+
+model FlashcardProgress {
+  id                  Int      @id @default(autoincrement())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId              Int
+  card                Card     @relation(fields: [cardId], references: [id])
+  easeFactor          Float    @default(2.5)
+  interval            Int      @default(0)
+  nextReview          DateTime @default(now())
+  repetitions         Int      @default(0)
+  totalReviews        Int      @default(0)
+  totalCorrectReviews Int      @default(0)
+
+  @@unique([userId, cardId])
+  @@map("flashcard_progress")
+}
+
+model ActiveFlashcardSession {
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  categoryName     String
+  status           SessionStatus @default(ACTIVE)
+  totalTimeSeconds Int           @default(0)
+  sessionData      Json
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  dateCompleted    DateTime?
+
+  @@map("active_flashcard_sessions")
+}
+
+// ------------------------
+// STUDY PLAN / SUBSCRIPTIONS
+// ------------------------
+model StudyPlan {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  goalMinutes Int
+  daysPerWeek Int
+  focusAreas  String[]
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime
+  activities  Json
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_plans")
+}
+
+model Subscription {
+  id                   String           @id @default(uuid())
+  userId               String           @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  planAlias            String?
+  plan                 SubscriptionPlan
+  status               String
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  createdAt            DateTime         @default(now())
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id            Int      @id @default(autoincrement())
+  alias         String   @unique
+  name          String
+  description   String[]
+  stripePriceId String
+  price         Float
+  interval      String
+  currency      String   @default("USD")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ------------------------
+// SUPPORT TICKETS
+// ------------------------
+model SupportTicket {
+  id        String   @id @default(uuid())
+  userId    String
+  subject   String
+  status    TicketStatus    @default(OPEN)
+  priority  TicketPriority  @default(MEDIUM)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  SupportTicketMessage[]
+
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User          @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime     @default(now())
+}
+
+// ------------------------
+// NOTIFICATIONS
+// ------------------------
+model UserNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notifications")
+}
+
+// ------------------------
+// CEFR CONFIDENCE SYSTEM
+// ------------------------
+model CefrConfidenceCache {
+  id                 String           @id @default(uuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillArea          SkillArea
+
+  cefrLevel          Difficulty       @default(B1)
+  confidenceLower    Float            @default(0)
+  confidenceUpper    Float            @default(0)
+  confidenceLevel    ConfidenceLevel  @default(LOW)
+  performanceTrend   PerformanceTrend?
+
+  sessionsAnalyzed   Int              @default(0)
+  lastCalculatedAt   DateTime         @default(now())
+
+  @@unique([userId, skillArea])
+  @@map("cefr_confidence_cache")
+}
+
+model ConfidenceUpdateQueue {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)  // ← ADD THIS LINE
+  skillArea  SkillArea
+  trigger    String    @default("session_milestone")
+  queuedAt   DateTime  @default(now())
+  status     String    @default("pending")
+
+  @@unique([userId, skillArea])
+  @@map("confidence_update_queue")
+}
+
+// ------------------------
+// SETTINGS
+// ------------------------
+model BrandingSettings {
+  id              Int      @id @default(1)
+  platformLogoUrl String?
+  faviconUrl      String?
+  primaryColor    String   @default("#003213")
+  secondaryColor  String   @default("#3F83F5")
+  accentColor     String   @default("#0e0ebf")
+  headingFont     String   @default("Inter")
+  bodyFont        String   @default("Inter")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("branding_settings")
+}
+
+model SecuritySettings {
+  id                        Int      @id @default(1)
+  minPasswordLength         Int      @default(8)
+  passwordExpiryDays        Int      @default(90)
+  requireSpecialChars       Boolean  @default(true)
+  requireUppercaseLetters   Boolean  @default(true)
+  sessionTimeoutDays        Int      @default(3)
+  maxLoginAttempts          Int      @default(5)
+  dataRetentionPolicy       Boolean  @default(true)
+  dataRetentionDays         Int      @default(365)
+  gdprComplianceMode        Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("security_settings")
+}
+
+model PlatformSettings {
+  id                   Int      @id @default(1)
+  platformName         String   @default("ItalianMaster")
+  platformTitle        String?
+  platformDescription  String?  @db.Text
+  defaultLanguage      String   @default("English")
+  defaultTimezone      String   @default("Europe/Rome")
+  allowNewRegistration Boolean  @default(true)
+  freeTrialEnabled     Boolean  @default(true)
+  freeTrialPeriodDays  Int      @default(7)
+  maintenanceMode      Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model NotificationSettings {
+  id                        Int      @id @default(1)
+  newRegistrationAlert      Boolean  @default(true)
+  paymentRelatedAlert       Boolean  @default(true)
+  supportTicketAlert        Boolean  @default(true)
+  dailyAnalyticsSummary     Boolean  @default(false)
+  welcomeEmailEnabled       Boolean  @default(true)
+  learningRemindersEnabled  Boolean  @default(true)
+  achievementNotifications  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("notification_settings")
+}

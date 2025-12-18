@@ -156,4 +156,48 @@ export class PracticeSessionService {
     const total = sessions.reduce((sum, s) => sum + s.accuracy, 0);
     return Math.round(total / sessions.length);
   }
+
+
+
+
+
+// ADD THESE TWO
+  async getTodayMinutes(userId: string): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const result = await this.prisma.practiceSession.aggregate({
+      where: {
+        userId,
+        completedAt: { gte: today, lt: tomorrow },
+      },
+      _sum: { durationSeconds: true },
+    });
+
+    return Math.round((result._sum.durationSeconds || 0) / 60);
+  }
+
+  async getWeeklyLessons(userId: string): Promise<number> {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    oneWeekAgo.setHours(0, 0, 0, 0);
+
+    return await this.prisma.practiceSession.count({
+      where: {
+        userId,
+        completedAt: { gte: oneWeekAgo },
+        lessonId: { not: null },
+      },
+    });
+  }
+
+
+
+
+
+
+
 }
