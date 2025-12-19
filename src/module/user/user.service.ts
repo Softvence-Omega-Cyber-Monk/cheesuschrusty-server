@@ -1,15 +1,17 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
-import { Role, SubscriptionPlan } from '@prisma/client';
+import { Role} from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
 import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/common/service/cloudinary/cloudinary.service';
 import { UpdateProfileDto } from './dto/update-user.dto';
+import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
+     private cefrConfidenceService: CefrConfidenceService,
   ) {}
  /**
    * Get all students with optional filters, search, and pagination
@@ -80,7 +82,6 @@ async getAllStudents(
       subscriptions: u.subscriptions || [],
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
-
       subscriptionPlan: activePro ? 'PRO' : 'FREE',
       trialAvailable: !u.hasUsedTrial && !activePro,
     };
@@ -106,6 +107,9 @@ async getAllStudents(
 /**
  * Get a single user by ID
  */
+/**
+ * Get a single user by ID — with real CEFR progress via service
+ */
 async getUserById(userId: string) {
   const user = await this.prisma.user.findUnique({
     where: { id: userId },
@@ -115,18 +119,21 @@ async getUserById(userId: string) {
   if (!user) throw new NotFoundException(`User ${userId} not found`);
 
   const now = new Date();
-const activePro = user.subscriptions.some(
-  (s) =>
-    s.plan === 'PRO' &&
-    s.status !== 'canceled' &&  // ignore only fully canceled
-    new Date(s.currentPeriodEnd) > now
-);
+  const activePro = user.subscriptions.some(
+    (s) =>
+      s.plan === 'PRO' &&
+      s.status !== 'canceled' &&
+      new Date(s.currentPeriodEnd) > now
+  );
+
+  // Use the existing service for CEFR progress
+  const cefrProgress = await this.cefrConfidenceService.getUserProgress(userId);
 
   return {
     id: user.id,
     email: user.email,
     emailVerified: user.emailVerified,
-    name: user.name,
+    name: user.name?.trim() || '(No name)',
     avatar: user.avatar,
     isActive: user.isActive,
     hasUsedTrial: user.hasUsedTrial,
@@ -148,9 +155,17 @@ const activePro = user.subscriptions.some(
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
 
-    // Computed fields
+    // Computed
     subscriptionPlan: activePro ? 'PRO' : 'FREE',
     trialAvailable: !user.hasUsedTrial && !activePro,
+
+    // Real CEFR from service (no hardcoded fallback!)
+    cefrSkills: {
+      reading: cefrProgress.skills.find(s => s.skillArea === 'reading'),
+      listening: cefrProgress.skills.find(s => s.skillArea === 'listening'),
+      writing: cefrProgress.skills.find(s => s.skillArea === 'writing'),
+      speaking: cefrProgress.skills.find(s => s.skillArea === 'speaking'),
+    },
   };
 }
   /**

@@ -7,5 +7,6 @@ import { SubscriptionPlanModule } from '../subscription-plan/subscription-plan.m
   imports: [SubscriptionPlanModule], 
   controllers: [SubscriptionController],
   providers: [SubscriptionService],
+  exports:[SubscriptionService]
 })
 export class SubscriptionModule {}
