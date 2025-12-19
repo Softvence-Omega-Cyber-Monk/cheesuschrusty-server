@@ -26,6 +26,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AnalyticsModule } from './module/analytics/analytics.module';
 import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
 import { CloudinaryService } from './common/service/cloudinary/cloudinary.service';
+import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/admin-dashboard-metadata.module';
 
 
 
@@ -65,7 +66,8 @@ import { CloudinaryService } from './common/service/cloudinary/cloudinary.servic
     NotificationSettingsModule,
     PracticeSessionModule,
     AnalyticsModule,
-    LeaderboardModule
+    LeaderboardModule,
+    AdminDashboardMetadataModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService],
