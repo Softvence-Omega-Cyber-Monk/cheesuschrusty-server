@@ -323,11 +323,7 @@ model ActiveFlashcardSession {
 model StudyPlan {
   id          String   @id @default(uuid())
   userId      String   @unique
-  goalMinutes Int
-  daysPerWeek Int
-  focusAreas  String[]
   generatedAt DateTime @default(now())
-  expiresAt   DateTime
   activities  Json
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

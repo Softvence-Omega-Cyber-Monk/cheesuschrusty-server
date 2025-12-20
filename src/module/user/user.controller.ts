@@ -8,6 +8,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateProfileDto } from './dto/update-user.dto';
+import { UpsertStudyPlanDto } from './dto/upsert-study-plan.dto';
 
 
 @ApiTags('User Management')
@@ -177,8 +178,14 @@ export class UserController {
         example: true,
         description: 'Get notified when you earn badges'
       },
+      dailyGoalMinutes: { 
+        type: 'number',
+        example: 30,
+        description: 'Daily study goal in minutes'
+      },
       avatar: { type: 'string', format: 'binary' },
     },
+
   },
 })
 @ApiResponse({ status: 200, description: 'Profile updated successfully' })
@@ -212,6 +219,46 @@ async updateProfile(
       success: true,
       message: result.message,
       data: result,
+    });
+  }
+
+
+  @Post('study-planner')
+  @Roles(Role.USER)
+  @ApiOperation({ summary: 'Create or update AI study plan' })
+  @ApiResponse({ status: 200, description: 'Study plan saved' })
+  async upsertStudyPlan(
+    @Req() req: any,
+    @Body() dto: UpsertStudyPlanDto,
+    @Res() res: Response,
+  ) {
+    const userId = req.user.id;
+
+    const plan = await this.userService.upsertStudyPlan(userId, dto);
+
+    return res.status(HttpStatus.OK).json({
+      success: true,
+      message: 'Study plan saved successfully',
+      data: plan,
+    });
+  }
+
+  // 🔹 GET STUDY PLAN
+  @Get('study-planner')
+  @Roles(Role.USER)
+  @ApiOperation({ summary: 'Get current study plan' })
+  @ApiResponse({ status: 200, description: 'Study plan retrieved' })
+  async getStudyPlan(
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const userId = req.user.id;
+
+    const plan = await this.userService.getStudyPlan(userId);
+
+    return res.status(HttpStatus.OK).json({
+      success: true,
+      data: plan,
     });
   }
 
