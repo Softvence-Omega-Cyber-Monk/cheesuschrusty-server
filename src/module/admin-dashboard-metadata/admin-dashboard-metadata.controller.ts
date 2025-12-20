@@ -37,4 +37,34 @@ export class AdminDashboardMetadataController {
       data,
     });
   }
+
+
+  @Get('analytics')
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
+  @ApiOperation({ 
+    summary: 'Get admin analytics dashboard data',
+    description: 'Returns real-time analytics: active users, study time, content completion, retention, charts, and insights'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Analytics data retrieved successfully' 
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient role' })
+  async getAnalytics(
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const data = await this.adminDashboardMetadataService.getAnalyticsData();
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Admin analytics data loaded successfully',
+      data,
+    });
+  }
+
+
+
 }
