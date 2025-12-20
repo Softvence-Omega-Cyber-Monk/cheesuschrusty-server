@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import { CloudinaryService } from 'src/common/service/cloudinary/cloudinary.service';
 import { UpdateProfileDto } from './dto/update-user.dto';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
+import { UpsertStudyPlanDto } from './dto/upsert-study-plan.dto';
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService,
@@ -320,6 +321,7 @@ async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer
   weeklyUpdateEnabled: dto.weeklyUpdateEnabled,
   streakRemindersEnabled: dto.streakRemindersEnabled,
   achievementAlertsEnabled: dto.achievementAlertsEnabled,
+   dailyGoalMinutes: dto.dailyGoalMinutes,
 },
 
 // In select
@@ -331,6 +333,7 @@ select: {
   weeklyUpdateEnabled: true,
   streakRemindersEnabled: true,
   achievementAlertsEnabled: true,
+  dailyGoalMinutes: true, 
 },
     });
 
@@ -341,7 +344,43 @@ select: {
     };
   }
 
+async upsertStudyPlan(userId: string, dto: UpsertStudyPlanDto) {
+    return this.prisma.studyPlan.upsert({
+      where: {
+        userId, // unique
+      },
+      update: {
+        activities: dto.activities,
+        generatedAt: new Date(),
+      },
+      create: {
+        userId,
+        activities: dto.activities,
+      },
+      select: {
+        id: true,
+        generatedAt: true,
+        activities: true,
+      },
+    });
+  }
 
+  async getStudyPlan(userId: string) {
+    const plan = await this.prisma.studyPlan.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        generatedAt: true,
+        activities: true,
+      },
+    });
+
+    if (!plan) {
+      throw new BadRequestException('Study plan not found');
+    }
+
+    return plan;
+  }
 
 
 

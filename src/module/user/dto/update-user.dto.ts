@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateUserDto {
   @IsBoolean()
@@ -27,4 +27,12 @@ export class UpdateProfileDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   achievementAlertsEnabled?: boolean;
+
+
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  dailyGoalMinutes?: number;
+
 }
