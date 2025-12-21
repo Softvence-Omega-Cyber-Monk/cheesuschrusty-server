@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Post,
@@ -10,8 +11,7 @@ import {
 import {
   ApiOperation,
   ApiTags,
-  ApiBody,
-  ApiResponse,
+  ApiBody
 } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorators';
 import { SubscriptionService } from './subscription.service';
@@ -21,50 +21,40 @@ import sendResponse from '../utils/sendResponse';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
-
 @ApiTags('Subscriptions')
 @Controller('subscriptions')
 export class SubscriptionController {
   constructor(private subService: SubscriptionService) {}
 
   /**
-   * Create Stripe checkout session
+   * Create Lemon Squeezy checkout
    */
   @Post('checkout')
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Create Stripe subscription checkout session' })
-@ApiBody({
-  description: 'Payload required to create a subscription checkout session',
-  type: CreateSubscriptionDto,
-})
-  @ApiResponse({
-    status: 201,
-    description: 'Checkout session created successfully',
-    schema: {
-      example: {
-        checkoutUrl: 'https://checkout.stripe.com/pay/cs_test_123456',
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Create Lemon Squeezy subscription checkout' })
+  @ApiBody({ type: CreateSubscriptionDto })
   async createCheckout(
     @Body() body: CreateSubscriptionDto,
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const {planAlias } = body;
+    const { planAlias } = body;
 
-    const result = await this.subService.createCheckout(req.user!.id, planAlias);
+    const result = await this.subService.createCheckout(
+      req.user!.id,
+      planAlias,
+    );
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Checkout session created successfully',
-      data: result,
+      data: result, // { checkoutUrl }
     });
   }
 
   /**
-   * Cancel user subscription
+   * Cancel subscription (Lemon Squeezy)
    */
   @Post('cancel')
   @Roles(Role.USER)
@@ -75,63 +65,57 @@ export class SubscriptionController {
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'Subscription canceled. Access remains until period end.',
+      message: 'Subscription cancellation scheduled.',
       data: null,
     });
   }
 
   /**
-   * Stripe webhook
+   * Lemon Squeezy webhook
    */
-  @Post('webhook')
-  @Public()
-  @ApiOperation({ summary: 'Stripe webhook for subscription events' })
-  @ApiResponse({
-    status: 200,
-    description: 'Webhook received successfully',
-    schema: { example: { received: true } },
-  })
-  @ApiResponse({ status: 400, description: 'Invalid webhook request' })
-  async handleWebhook(@Req() req: Request, @Res() res: Response) {
-    try {
-      const sig = req.headers['stripe-signature'];
+ @Post('webhook')
+@Public()
+async handleWebhook(@Req() req: Request, @Res() res: Response) {
+  try {
+    const signature = req.headers['x-signature'] as string;
 
-      if (!sig || Array.isArray(sig)) {
-        return res.status(400).send('Missing Stripe signature');
-      }
-
-      const event = this.subService.stripe.webhooks.constructEvent(
-        (req as any).rawBody,
-        sig,
-        process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET!,
-      );
-
-      await this.subService.handleWebhook(event);
-
-      return res.json({ received: true });
-    } catch (err: any) {
-      return res.status(400).send(`Webhook error: ${err.message}`);
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing signature' });
     }
+
+    const rawBody = req.body.toString('utf8');
+    const payload = JSON.parse(rawBody);
+
+    await this.subService.handleWebhook(
+      rawBody,
+      signature,
+      payload,
+    );
+
+    return res.status(201).json({ received: true });
+  } catch (error: any) {
+    console.error('Webhook error:', error.message);
+    return res.status(400).json({ error: error.message });
   }
-
-
-
-
-  // src/module/subscription/subscription.controller.ts
-@Get('me')
-@Roles(Role.USER)
-@ApiOperation({ summary: 'Get current user subscription details (Plan, End Date, Status).' })
-async getMySubscription(@Req() req:Request,@Res() res: Response) {
-  const details = await this.subService.getMySubscriptionDetails(req.user!.id);
-  
-  return sendResponse(res, {
-    statusCode: HttpStatus.OK,
-    success: true,
-    message: 'Subscription details retrieved.',
-    data: details,
-  });
 }
 
 
+  /**
+   * Get current user subscription
+   */
+  @Get('me')
+  @Roles(Role.USER)
+  @ApiOperation({ summary: 'Get current user subscription details' })
+  async getMySubscription(@Req() req: Request, @Res() res: Response) {
+    const details = await this.subService.getMySubscriptionDetails(
+      req.user!.id,
+    );
 
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Subscription details retrieved.',
+      data: details,
+    });
+  }
 }

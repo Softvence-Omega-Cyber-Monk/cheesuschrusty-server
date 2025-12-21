@@ -1,22 +1,30 @@
-import { IsNumber, IsString, IsNotEmpty, IsPositive, IsBoolean, IsOptional, IsArray, ArrayMinSize } from 'class-validator';
+import { 
+  IsNumber, 
+  IsString, 
+  IsNotEmpty, 
+  IsPositive, 
+  IsBoolean, 
+  IsOptional, 
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdatePlanDto {
-  @ApiProperty({ description: 'The new Stripe Price ID (e.g., price_1NfT...)' })
+  @ApiProperty({ description: 'The new Lemon Squeezy Variant ID (e.g., variant_12345)', required: false })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  stripePriceId?: string;
+  lemonVariantId?: string;
 
-  @ApiProperty({ description: 'The new display price (e.g., 9.99)' })
+  @ApiProperty({ description: 'The new display price (e.g., 9.99)', required: false })
   @IsOptional()
   @IsNumber()
   @IsPositive()
   price?: number;
 
-  @ApiProperty({ description: 'Whether the plan should be visible/purchasable.' })
+  @ApiProperty({ description: 'Whether the plan should be visible/purchasable.', required: false })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
   
 }

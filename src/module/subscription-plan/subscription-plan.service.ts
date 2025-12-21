@@ -5,15 +5,15 @@ import { UpdatePlanDto } from './dto/update-plan.dto';
 
 @Injectable()
 export class SubscriptionPlanService {
- constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
- /**
+  /**
    * ADMIN/PUBLIC: Fetches all plans from the database.
    * Public-facing endpoints can filter this list by isActive: true.
    */
   async getAllPlans(): Promise<Plan[]> {
     return this.prisma.plan.findMany({
-      orderBy: { price: 'asc' }, 
+      orderBy: { price: 'asc' },
     });
   }
 
@@ -29,14 +29,14 @@ export class SubscriptionPlanService {
 
   /**
    * ADMIN: Updates the configuration of an existing plan.
-   * Allows updating stripePriceId, price, isActive, and description.
+   * Allows updating lemonVariantId, price, isActive, and description.
    */
   async updatePlan(alias: string, dto: UpdatePlanDto): Promise<Plan> {
     try {
       return await this.prisma.plan.update({
-        where: { alias: alias },
+        where: { alias },
         data: {
-          stripePriceId: dto.stripePriceId,
+          lemonVariantId: dto.lemonVariantId,
           price: dto.price,
           isActive: dto.isActive,
         },
@@ -49,8 +49,4 @@ export class SubscriptionPlanService {
       throw error;
     }
   }
-
-
-
-  
 }

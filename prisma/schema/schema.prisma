@@ -123,7 +123,7 @@ model User {
   lessonsCompleted        Int      @default(0)
   dailyGoalMinutes        Int      @default(20)
   timezone                String?
-  stripeCustomerId        String?  @unique
+  lemonCustomerId         String?   @unique  
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -331,27 +331,29 @@ model StudyPlan {
 }
 
 model Subscription {
-  id                   String           @id @default(uuid())
-  userId               String           @unique
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+
+  lemonCustomerId      String?
+  lemonSubscriptionId String?  @unique 
   planAlias            String?
   plan                 SubscriptionPlan
   status               String
+
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
-  createdAt            DateTime         @default(now())
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("subscriptions")
+  createdAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 
 model Plan {
   id            Int      @id @default(autoincrement())
   alias         String   @unique
   name          String
   description   String[]
-  stripePriceId String
+  lemonVariantId  String
   price         Float
   interval      String
   currency      String   @default("USD")
