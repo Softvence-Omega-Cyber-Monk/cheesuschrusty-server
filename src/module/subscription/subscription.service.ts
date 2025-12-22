@@ -1,347 +1,289 @@
-import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
-import Stripe from 'stripe';
-import { SubscriptionPlanService } from '../subscription-plan/subscription-plan.service';
-import { SubscriptionPlan as PrismaSubscriptionPlan } from '@prisma/client'; // Import for type safety
+import { lemon } from './lemon-squeezy.client';
+import { verifySignature } from './subscriptions.webhook';
+import { SubscriptionPlan } from '@prisma/client';
 
-// Utility for converting Unix timestamps to Date objects
-const toDate = (timestamp: number): Date => new Date(timestamp * 1000);
-
-// Local augmentation type for subscription timestamps returned by Stripe at runtime
-type StripeSubscriptionWithPeriods = Stripe.Subscription & {
-	current_period_start: number;
-	current_period_end: number;
-};
-
-// 🎯 Normalize status strings to lowercase for consistency
-type SubscriptionStatusString = 'trialing' | 'active' | 'canceled' | 'canceled_at_period_end' | string;
+type SubscriptionStatusString =
+  | 'trialing'
+  | 'active'
+  | 'canceled'
+  | 'canceled_at_period_end'
+  | 'expired'
+  | string;
 
 @Injectable()
 export class SubscriptionService {
-	public stripe: Stripe; // Expose stripe instance for the controller's webhook handling
-	private readonly logger = new Logger(SubscriptionService.name);
+  private readonly logger = new Logger(SubscriptionService.name);
 
-	constructor(
-		private prisma: PrismaService,
-		private planService: SubscriptionPlanService,
-	) {
-		const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-		if (!stripeSecretKey) {
-			throw new InternalServerErrorException('STRIPE_SECRET_KEY is not configured in environment.');
-		}
+  constructor(private prisma: PrismaService) {}
 
-		this.stripe = new Stripe(stripeSecretKey, {
-			apiVersion: '2024-12-18.acacia' as Stripe.LatestApiVersion,
-		});
-	}
+  /* ======================================================
+     1️⃣ CREATE CHECKOUT (with Lemon customer ID)
+  ====================================================== */
+  async createCheckout(userId: string, planAlias: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
 
-	/**
-	 * 1️⃣ Create subscription checkout session
-	 * This now takes the planAlias to dynamically look up the price ID.
-	 */
-	async createCheckout(userId: string, planAlias: string) {
-		const user = await this.prisma.user.findUnique({ where: { id: userId } });
-		if (!user) throw new NotFoundException('User not found');
+    const plan = await this.prisma.plan.findUnique({
+      where: { alias: planAlias },
+    });
+    if (!plan || !plan.isActive) {
+      throw new NotFoundException('Plan not available');
+    }
 
-		// --- 🎯 TRIAL ELIGIBILITY CHECK ---
-		const isProPlan = planAlias.toUpperCase().includes('PRO');
+    // Prevent double subscription
+    const existingSub = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
 
-		// If the plan is PRO (monthly/yearly) and the user has used the trial, prevent checkout.
-		if (user.hasUsedTrial && isProPlan) {
-			throw new NotFoundException('Trial already used. Please purchase a full plan.');
-		}
+    if (
+      existingSub &&
+      ['active', 'trialing', 'canceled_at_period_end'].includes(
+        existingSub.status,
+      ) &&
+      existingSub.currentPeriodEnd > new Date()
+    ) {
+      throw new BadRequestException(
+        'You already have an active subscription.',
+      );
+    }
 
-		// Determine trial days: 7 days if it's a PRO plan AND the user hasn't used the trial yet.
-		const trialDays = (!user.hasUsedTrial && isProPlan) ? 7 : undefined;
-		// ---------------------------------
+    // Block PRO checkout if trial already used
+    if (user.hasUsedTrial && plan.alias.includes('PRO')) {
+      throw new BadRequestException(
+        'Trial already used. Please purchase a full plan.',
+      );
+    }
 
-		// 1. Get the plan configuration (to get the dynamic stripePriceId)
-		const planConfig = await this.planService.getPlanByAlias(planAlias);
+    // Create checkout on Lemon
+    const res = await lemon.post('/checkouts', {
+      data: {
+        type: 'checkouts',
+        attributes: {
+          checkout_data: {
+            email: user.email,
+            custom: {
+              userId: user.id,
+              planAlias: plan.alias,
+            },
+          },
+        },
+        relationships: {
+          store: {
+            data: {
+              type: 'stores',
+              id: process.env.LEMON_SQUEEZY_STORE_ID,
+            },
+          },
+          variant: {
+            data: {
+              type: 'variants',
+              id: plan.lemonVariantId,
+            },
+          },
+        },
+      },
+    });
 
-		if (!planConfig.isActive) {
-			throw new NotFoundException(`Plan ${planAlias} is not currently active for purchase.`);
-		}
+    const checkoutData = res.data.data.attributes;
+    const lemonCustomerId = checkoutData.customer_id?.toString();
 
-		// Create a customer if one doesn't exist.
-		let stripeCustomerId = user.stripeCustomerId; 
-		if (!stripeCustomerId) {
-			const customer = await this.stripe.customers.create({
-				email: user.email,
-				metadata: { userId: user.id },
-			});
-			stripeCustomerId = customer.id;
-			// Update the user in your database with the new customer ID
-			await this.prisma.user.update({
-				where: { id: userId },
-				data: { stripeCustomerId: stripeCustomerId },
-			});
-		}
+    // Store Lemon customer ID if not already set
+    if (lemonCustomerId && !user.lemonCustomerId) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lemonCustomerId },
+      });
+    }
 
-		// 2. Create the Checkout Session
-		const session = await this.stripe.checkout.sessions.create({
-			payment_method_types: ['card'],
-			mode: 'subscription',
-			line_items: [
-				{
-					price: planConfig.stripePriceId,
-					quantity: 1,
-				},
-			],
-			customer: stripeCustomerId,
-			success_url: `${process.env.CLIENT_URL}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
-			cancel_url: `${process.env.CLIENT_URL}/subscribe/cancel`,
-			// Pass both internal userId and the plan alias for webhook activation
-			metadata: { userId: user.id, planAlias: planConfig.alias },
-			subscription_data: {
-				metadata: {
-					userId: user.id,
-					planAlias: planConfig.alias,
-				},
-				// 🎯 Apply the trial period here if trialDays is set
-				...(trialDays !== undefined && { trial_period_days: trialDays }),
-			},
-		});
+    return { checkoutUrl: checkoutData.url };
+  }
 
-		if (!session.url) {
-			throw new InternalServerErrorException('Failed to generate Stripe checkout URL.');
-		}
+  /* ======================================================
+     2️⃣ WEBHOOK HANDLER (with customer ID storage)
+  ====================================================== */
+  async handleWebhook(rawBody: string, signature: string, payload: any) {
+    if (!verifySignature(rawBody, signature)) {
+      throw new Error('Invalid webhook signature');
+    }
 
-		return { checkoutUrl: session.url };
-	}
+    const event = payload.meta?.event_name;
+    const meta = payload.meta?.custom_data;
+    const attrs = payload.data?.attributes;
 
-	/** 2️⃣ Handle webhook from Stripe */
-	async handleWebhook(event: Stripe.Event) {
-		switch (event.type) {
-			case 'checkout.session.completed': {
-				const session = event.data.object as Stripe.Checkout.Session;
-				// The session contains the subscription ID and metadata needed for activation
-				if (session.mode === 'subscription') {
-					await this.activateSubscription(session);
-				}
-				break;
-			}
+    if (!meta?.userId) return;
 
-			case 'invoice.payment_succeeded': {
-				const invoice = event.data.object as Stripe.Invoice;
-				const subscriptionIdOrObject = (invoice as any).subscription as (string | Stripe.Subscription | null | undefined);
+    const userId = meta.userId;
+    const lemonSubscriptionId = payload.data.id.toString();
+    const lemonCustomerId = attrs.customer_id?.toString();
 
-				// Only process invoices linked to a subscription renewal
-				if (!subscriptionIdOrObject) return;
+    const periodStart = new Date(attrs.created_at);
+    const periodEnd = attrs.renews_at
+      ? new Date(attrs.renews_at)
+      : new Date(attrs.created_at);
 
-				const subId = typeof subscriptionIdOrObject === 'string'
-					? subscriptionIdOrObject
-					: subscriptionIdOrObject.id;
+    /* subscription_created / updated */
+    if (event === 'subscription_created' || event === 'subscription_updated') {
+      const dbStatus: SubscriptionStatusString =
+        attrs.status === 'on_trial'
+          ? 'trialing'
+          : attrs.status === 'active'
+          ? 'active'
+          : attrs.status;
 
-				const subscription = (await this.stripe.subscriptions.retrieve(subId)) as unknown as StripeSubscriptionWithPeriods;
+      // Mark trial used
+      if (dbStatus === 'trialing' || dbStatus === 'active') {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { hasUsedTrial: true },
+        });
+      }
 
-				await this.updateSubscriptionPeriod(subscription);
-				break;
-			}
+      // Store Lemon customer ID if not exists
+      if (lemonCustomerId) {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { lemonCustomerId },
+        });
+      }
 
-			case 'customer.subscription.deleted': {
-				const sub = event.data.object as Stripe.Subscription;
-				await this.markSubscriptionDeleted(sub);
-				break;
-			}
+      await this.prisma.subscription.upsert({
+        where: { lemonSubscriptionId },
+        update: {
+          userId,
+          lemonCustomerId,
+          status: dbStatus,
+          plan: SubscriptionPlan.PRO,
+          planAlias: meta.planAlias,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        },
+        create: {
+          userId,
+          lemonSubscriptionId,
+          lemonCustomerId,
+          status: dbStatus,
+          plan: SubscriptionPlan.PRO,
+          planAlias: meta.planAlias,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        },
+      });
 
-			// Handle when a subscription update is made (e.g., change plan or cancellation request)
-			case 'customer.subscription.updated': {
-				const sub = event.data.object as Stripe.Subscription;
-				const subscription = sub as unknown as StripeSubscriptionWithPeriods;
-				await this.updateSubscriptionPeriod(subscription);
-				break;
-			}
-		}
-	}
+      this.logger.log(
+        `Subscription ${dbStatus} for user ${userId} (${meta.planAlias})`,
+      );
+    }
 
-	/** Mark subscription ACTIVE after successful payment (first time only) */
-	private async activateSubscription(session: Stripe.Checkout.Session) {
-		const userId = session.metadata?.userId;
-		const planAlias = session.metadata?.planAlias;
-		const stripeSubscriptionId = session.subscription as string;
+    /* subscription_cancelled */
+    if (event === 'subscription_cancelled') {
+      // Only update status, leave currentPeriodEnd as-is for UI parity
+      await this.prisma.subscription.updateMany({
+        where: { lemonSubscriptionId },
+        data: { status: 'canceled_at_period_end' },
+      });
 
-		if (!userId || !stripeSubscriptionId || !planAlias) {
-			this.logger.error('Missing critical metadata in checkout session completion event.');
-			return;
-		}
+      this.logger.log(`Subscription cancellation scheduled: ${userId}`);
+    }
+  }
 
-		const subscription = (await this.stripe.subscriptions.retrieve(
-			stripeSubscriptionId
-		)) as unknown as StripeSubscriptionWithPeriods;
+  /* ======================================================
+     3️⃣ USER CANCEL (Stripe parity)
+  ====================================================== */
+  async cancelUserSubscription(userId: string) {
+    const sub = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
 
-		// Use the hardcoded PRO as the access level
-		const planEnum = 'PRO' as PrismaSubscriptionPlan; 
+    if (!sub || !['active', 'trialing'].includes(sub.status)) {
+      throw new NotFoundException('Active subscription not found');
+    }
 
-		const stripeCustomerId = typeof subscription.customer === 'string'
-			? subscription.customer
-			: subscription.customer.id;
+    // Cancel subscription in Lemon
+    await lemon.delete(`/subscriptions/${sub.lemonSubscriptionId}`);
 
-		// --- 🎯 SET hasUsedTrial TO TRUE ---
-		if (subscription.status === 'trialing' || subscription.status === 'active') {
-			await this.prisma.user.update({
-				where: { id: userId },
-				data: { hasUsedTrial: true },
-			});
-		}
-		// ----------------------------------
-		
-		// 🎯 FIX: Store status in lowercase
-		const dbStatus = subscription.status.toLowerCase();
+    // Only update status locally
+    await this.prisma.subscription.update({
+      where: { userId },
+      data: { status: 'canceled_at_period_end' },
+    });
 
-		await this.prisma.subscription.upsert({
-			where: { userId },
-			update: {
-				stripeSubscriptionId: stripeSubscriptionId,
-				status: dbStatus, // e.g. 'active' or 'trialing' (lowercase)
-				plan: planEnum,
-				planAlias: planAlias,
-				currentPeriodStart: toDate(subscription.current_period_start),
-				currentPeriodEnd: toDate(subscription.current_period_end),
-			},
-			create: {
-				userId,
-				stripeCustomerId: stripeCustomerId,
-				stripeSubscriptionId: stripeSubscriptionId,
-				plan: planEnum,
-				planAlias: planAlias,
-				status: dbStatus,
-				currentPeriodStart: toDate(subscription.current_period_start),
-				currentPeriodEnd: toDate(subscription.current_period_end),
-			},
-		});
-		this.logger.log(`Subscription activated for User: ${userId} for plan ${planAlias}. Status: ${dbStatus}`);
-	}
+    this.logger.log(`Subscription cancellation scheduled for User: ${userId}`);
+  }
 
-	/**
-	 * Update subscription dates on renewal or status change (webhook handler)
-	 */
-	private async updateSubscriptionPeriod(subscription: Stripe.Subscription | StripeSubscriptionWithPeriods) {
-		const sub = subscription as unknown as StripeSubscriptionWithPeriods;
+  /* ======================================================
+     4️⃣ CHECK ACTIVE STATUS
+  ====================================================== */
+  async isActive(userId: string): Promise<boolean> {
+    const sub = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
 
-		const userId = sub.metadata?.userId;
-		const planAlias = sub.metadata?.planAlias;
+    if (!sub || sub.status === 'canceled') return false;
 
-		if (!userId) {
-			this.logger.error('Missing userId in subscription metadata for period update.');
-			return;
-		}
+    return sub.currentPeriodEnd instanceof Date && sub.currentPeriodEnd >= new Date();
+  }
 
-		const planEnum = 'PRO' as PrismaSubscriptionPlan;
+  /* ======================================================
+     5️⃣ GET SUBSCRIPTION DETAILS
+  ====================================================== */
+  async getMySubscriptionDetails(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscriptions: true },
+    });
 
-		// Defensive fetch for period timestamps
-		if (typeof sub.current_period_end !== 'number' || typeof sub.current_period_start !== 'number') {
-			this.logger.debug('Subscription object missing period timestamps — retrieving full subscription from Stripe.');
-			const fetched = (await this.stripe.subscriptions.retrieve(sub.id)) as unknown as StripeSubscriptionWithPeriods;
-			Object.assign(sub, fetched);
-		}
+    if (!user || !user.subscriptions || user.subscriptions.length === 0) {
+      return {
+        status: 'none',
+        plan: 'FREE',
+        isPro: false,
+        hasUsedTrial: user?.hasUsedTrial ?? false,
+      };
+    }
 
-		// 🎯 CRITICAL FIX: Determine status based on the cancel_at_period_end flag
-		let dbStatus: SubscriptionStatusString;
-		if (sub.cancel_at_period_end === true) {
-			// If scheduled for cancellation, use our local status in lowercase.
-			dbStatus = 'canceled_at_period_end';
-		} else {
-			// Otherwise, rely on Stripe's reported status and convert to lowercase.
-			dbStatus = sub.status.toLowerCase();
-		}
+    const sub = user.subscriptions[0];
 
-		await this.prisma.subscription.update({
-			where: { userId },
-			data: {
-				status: dbStatus, // Now consistently lowercase
-				plan: planEnum,
-				planAlias: planAlias,
-				currentPeriodStart: toDate(sub.current_period_start),
-				currentPeriodEnd: toDate(sub.current_period_end),
-			},
-		});
+    const isPro =
+      sub.currentPeriodEnd instanceof Date && sub.currentPeriodEnd >= new Date();
 
-		this.logger.log(`Subscription period updated for User: ${userId}. New end date: ${toDate(sub.current_period_end).toISOString()}. Status: ${dbStatus}`);
-	}
-
-
-	/** Mark subscription as 'canceled' (on customer.subscription.deleted webhook) */
-	private async markSubscriptionDeleted(stripeSub: Stripe.Subscription) {
-		const userId = stripeSub.metadata?.userId;
-		if (!userId) return;
-
-		await this.prisma.subscription.update({
-			where: { userId },
-			// 🎯 FIX: Store status in lowercase
-			data: { status: 'canceled' },
-		});
-		this.logger.log(`Subscription marked canceled for User: ${userId}.`);
-	}
-
-	/** 3️⃣ User-facing API to cancel subscription */
-	async cancelUserSubscription(userId: string) {
-		const sub = await this.prisma.subscription.findUnique({ where: { userId } });
-
-		// Allow cancellation if status is 'active' OR 'trialing' (checking for existing lowercase status)
-		if (!sub || (sub.status !== 'active' && sub.status !== 'trialing') || !sub.stripeSubscriptionId) {
-			throw new NotFoundException('Active or trialing subscription not found or not managed by Stripe.');
-		}
-
-		// 1. Cancel in Stripe: set cancel_at_period_end = true
-		await this.stripe.subscriptions.update(sub.stripeSubscriptionId, {
-			cancel_at_period_end: true,
-		});
-
-		// 2. Preemptively mark it locally for immediate UI feedback.
-		await this.prisma.subscription.update({
-			where: { userId },
-			// 🎯 FIX: Use consistent lowercase status
-			data: { status: 'canceled_at_period_end' }, 
-		});
-		this.logger.log(`Subscription cancellation scheduled for User: ${userId}. Status set to 'canceled_at_period_end'.`);
-	}
-
-	/** Check if user is active subscriber */
-	async isActive(userId: string): Promise<boolean> {
-		const sub = await this.prisma.subscription.findUnique({
-			where: { userId },
-		});
-
-		// 🎯 FIX: Check database status against lowercase string.
-		if (!sub || sub.status === 'canceled') return false; 
-
-		const now = new Date();
-		// Access is granted if the current period hasn't ended yet
-		return sub.currentPeriodEnd >= now;
-	}
-
-	/**
-	 * Fetch full subscription details for the Frontend UI.
-	 */
-	async getMySubscriptionDetails(userId: string) {
-		const userWithSub = await this.prisma.user.findUnique({
-			where: { id: userId },
-			select: { 
-				hasUsedTrial: true, 
-				subscriptions: true 
-			}
-		});
-
-		if (!userWithSub || userWithSub.subscriptions.length === 0) {
-			return { 
-				status: 'none' as SubscriptionStatusString,
-				plan: 'FREE', 
-				isPro: false,
-				hasUsedTrial: userWithSub?.hasUsedTrial ?? false,
-			};
-		}
-		
-		const sub = userWithSub.subscriptions[0];
-
-		// Use the central check for validity
-		const isValid = await this.isActive(userId); 
-
-		return {
-			status: sub.status, // e.g. 'active', 'trialing', 'canceled_at_period_end' (all lowercase)
-			isPro: isValid,
-			planAlias: sub.planAlias, // 'PRO_MONTHLY' or 'PRO_YEARLY'
-			currentPeriodEnd: sub.currentPeriodEnd, // Date object
-			hasUsedTrial: userWithSub.hasUsedTrial,
-		};
-	}
+    return {
+      status: sub.status ?? 'none',
+      planAlias: sub.planAlias ?? 'FREE',
+      isPro,
+      currentPeriodEnd: sub.currentPeriodEnd ?? null,
+      hasUsedTrial: user.hasUsedTrial,
+    };
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

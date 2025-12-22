@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,15 +20,18 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { generateOtpCode, getTokens, hashOtpCode, validatePassword, verifyOtp } from './auth.utils';
 import { MailService } from '../mail/mail.service';
 import { MailTemplatesService } from '../mail/mail.template';
+import { NotificationSettingsService } from '../notification-settings/notification-settings.service';
 
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailerService: MailService,
     private mailTemplatesService: MailTemplatesService,
+    private notificationSettingsService: NotificationSettingsService,
   ) {}
 
 async register(dto: RegisterDto) {
@@ -39,7 +43,7 @@ async register(dto: RegisterDto) {
     throw new BadRequestException('Email is already registered!');
   }
 
-  // Optional: Validate password based on SecuritySettings
+  // Validate password
   const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
   validatePassword(dto.password, securitySettings!);
 
@@ -55,10 +59,25 @@ async register(dto: RegisterDto) {
     },
   });
 
-  // Calculate session timeout in milliseconds
+  // Generate tokens
   const sessionTimeoutMs = securitySettings!.sessionTimeoutDays * 24 * 60 * 60 * 1000;
-
   const tokens = await getTokens(this.jwtService, newUser.id, newUser.email, newUser.role, sessionTimeoutMs);
+
+  // Send welcome email if globally enabled
+  const notificationSettings = await this.notificationSettingsService.getSettings();
+  if (notificationSettings!.welcomeEmailEnabled) {
+    try {
+      await this.mailerService.sendWelcomeEmail({
+        email: newUser.email,
+        name: newUser.name,
+      });
+      this.logger.log(`Welcome email sent to ${newUser.email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send welcome email to ${newUser.email}`, error);
+      // Don't fail registration if email fails
+    }
+  }
+
   return { user: newUser, ...tokens };
 }
 
