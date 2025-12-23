@@ -151,6 +151,7 @@ export class UserController {
 
 
 @Patch('profile')
+@Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER,Role.SUPORT_MANAGER,Role.USER)
 @UseInterceptors(FileInterceptor('avatar'))
 @ApiOperation({ 
   summary: 'Update user profile',
