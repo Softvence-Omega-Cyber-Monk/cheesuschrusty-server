@@ -155,6 +155,10 @@ async getUserById(userId: string) {
     subscriptions: user.subscriptions || [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    weeklyUpdateEnabled:user.weeklyUpdateEnabled,
+  streakRemindersEnabled:user.streakRemindersEnabled,
+  achievementAlertsEnabled :user.achievementAlertsEnabled,
+    
 
     // Computed
     subscriptionPlan: activePro ? 'PRO' : 'FREE',

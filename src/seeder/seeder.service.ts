@@ -52,7 +52,12 @@ export class SeederService implements OnApplicationBootstrap {
       update: {
         lemonVariantId: monthlyVariantId,
         price: 9.99,
-        description: ['Unlimited access billed monthly.'],
+        description: [
+           'Unlimited flashcards',
+          'All lessons',
+          'Progress tracking',
+          'Priority support',
+        ],
       },
       create: {
         alias: 'PRO_MONTHLY',
@@ -77,7 +82,12 @@ export class SeederService implements OnApplicationBootstrap {
       update: {
         lemonVariantId: yearlyVariantId,
         price: 99.99,
-        description: ['Unlimited access billed annually.'],
+        description: [
+          'Unlimited flashcards',
+          'All lessons',
+          'Progress tracking',
+          'Priority support',
+        ],
       },
       create: {
         alias: 'PRO_YEARLY',
@@ -85,7 +95,6 @@ export class SeederService implements OnApplicationBootstrap {
         description: [
           'Unlimited flashcards',
           'All lessons',
-          'Offline access',
           'Progress tracking',
           'Priority support',
         ],
