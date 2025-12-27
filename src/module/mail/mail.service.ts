@@ -206,7 +206,73 @@ async sendStreakReminderEmail(user: { email: string; name?: string | null }, cur
 }
 
 
+// In MailService (add this method)
+async sendSupportTicketAlert(
+  admins: { email: string; name?: string | null }[],
+  ticket: { id: string; subject: string; user: { name?: string | null; email: string } },
+  firstMessage: string
+) {
+  const adminEmails = admins.map(a => a.email);
 
+  if (adminEmails.length === 0) return;
+
+  const userName = ticket.user.name?.trim() || 'User';
+  const shortMessage = firstMessage.length > 150 
+    ? firstMessage.substring(0, 150) + '...' 
+    : firstMessage;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>New Support Ticket Received</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
+        .container { max-width: 700px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #d32f2f; color: white; padding: 25px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { padding: 30px; color: #333; line-height: 1.6; }
+        .ticket-info { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .message { background: #fff8e1; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px; margin: 20px 0; font-style: italic; }
+        .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; border-radius: 0 0 12px 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Support Ticket</h1>
+        </div>
+        <div class="content">
+          <p><strong>Ticket ID:</strong> ${ticket.id}</p>
+          <p><strong>From:</strong> ${userName} (${ticket.user.email})</p>
+          <p><strong>Subject:</strong> ${ticket.subject}</p>
+
+          <div class="ticket-info">
+            <strong>Initial Message:</strong>
+            <div class="message">${shortMessage}</div>
+          </div>
+
+          <a href="${process.env.CLIENT_URL}/admin/support" class="btn">View Ticket in Admin Panel</a>
+
+          <p>Please respond as soon as possible.</p>
+        </div>
+        <div class="footer">
+          © 2025 ProntoCorso • Support Notification<br>
+          You can disable these alerts in Admin → Notification Settings
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await this.transporter.sendMail({
+    from: this.getFrom(),
+    to: adminEmails,
+    subject: `[Support] New Ticket: ${ticket.subject}`,
+    html,
+  });
+}
 
 
 

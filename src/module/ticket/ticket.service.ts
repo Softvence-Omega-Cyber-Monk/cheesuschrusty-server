@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma, TicketStatus, Role, TicketPriority } from '@prisma/client';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class TicketService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService,    private mailService: MailService) {}
 
     /**
      * Utility: check if user is support staff
@@ -19,28 +20,94 @@ export class TicketService {
 /**
  * Create a new support ticket with the first message.
  */
-async createTicket(userId: string, subject: string, message: string) {
-    console.log(`Creating new support ticket by user: ${userId}`);
+// async createTicket(userId: string, subject: string, message: string) {
+//     console.log(`Creating new support ticket by user: ${userId}`);
 
-    const ticket = await this.prisma.supportTicket.create({
-        data: {
-            userId,
-            subject,
-            status: TicketStatus.OPEN, 
-            messages: {
-                create: {
-                    senderId: userId,
-                    message,
-                },
-            },
+//     const ticket = await this.prisma.supportTicket.create({
+//         data: {
+//             userId,
+//             subject,
+//             status: TicketStatus.OPEN, 
+//             messages: {
+//                 create: {
+//                     senderId: userId,
+//                     message,
+//                 },
+//             },
+//         },
+//         include: {
+//             messages: true,
+//         },
+//     });
+
+//     console.log(`Ticket created with ID: ${ticket.id}`);
+//     return ticket;
+// }
+
+
+// In TicketService.createTicket()
+async createTicket(userId: string, subject: string, message: string) {
+  console.log(`Creating new support ticket by user: ${userId}`);
+
+  const ticket = await this.prisma.$transaction(async (tx) => {
+    const newTicket = await tx.supportTicket.create({
+      data: {
+        userId,
+        subject,
+        status: TicketStatus.OPEN,
+        messages: {
+          create: {
+            senderId: userId,
+            message,
+          },
         },
-        include: {
-            messages: true,
+      },
+      include: {
+        user: true,
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 1, // only first message
         },
+      },
     });
 
-    console.log(`Ticket created with ID: ${ticket.id}`);
-    return ticket;
+    return newTicket;
+  });
+
+  // SEND ALERT TO ADMINS
+  const globalSettings = await this.prisma.notificationSettings.findUnique({
+    where: { id: 1 },
+  });
+
+  if (globalSettings?.supportTicketAlert) {
+    // Get all support staff emails
+    const supportStaff = await this.prisma.user.findMany({
+      where: {
+        role: { in: ['SUPORT_MANAGER', 'SUPER_ADMIN'] },
+      },
+      select: { email: true, name: true },
+    });
+
+    if (supportStaff.length > 0) {
+      try {
+        await this.mailService.sendSupportTicketAlert(
+          supportStaff,
+          {
+            id: ticket.id,
+            subject: ticket.subject,
+            user: { name: ticket.user.name, email: ticket.user.email },
+          },
+          ticket.messages[0].message
+        );
+        console.log(`Support ticket alert sent for ticket ${ticket.id}`);
+      } catch (error) {
+        console.error(`Failed to send support ticket alert for ${ticket.id}`, error);
+        // Don't fail ticket creation
+      }
+    }
+  }
+
+  return ticket;
 }
 
     /**
