@@ -7,8 +7,10 @@ import { AnalyticsController } from './analytics.controller';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
+  imports: [MailModule],
   controllers: [AnalyticsController],
   providers: [
     AnalyticsService,
@@ -16,5 +18,6 @@ import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.s
     PracticeSessionService,         
     CefrConfidenceService,
   ],
+  exports: [AnalyticsService],
 })
 export class AnalyticsModule {}

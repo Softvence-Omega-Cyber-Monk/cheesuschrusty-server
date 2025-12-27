@@ -9,12 +9,14 @@ import sendResponse from '../utils/sendResponse';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CompleteLessonDto } from './dto/complete-lesson.dto';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 @ApiTags('Lesson Practice (User)')
 @Controller('lessons')
 export class LessonController {
   constructor(private readonly lessonService: LessionService,
     private readonly practiceSessionService: PracticeSessionService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
 
@@ -92,6 +94,9 @@ export class LessonController {
       durationSeconds: dto.durationSeconds,
       xpEarned: dto.xpEarned,
     });
+
+
+    await this.analyticsService.checkAndAwardBadges(userId);
 
     // 3. Return success + feedback
     return sendResponse(res, {

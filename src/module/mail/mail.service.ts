@@ -27,7 +27,7 @@ export class MailService {
     }) {
         // Destructure attachments again
         const { to, subject, html, from, attachments } = options;
-        const senderAddress = from || `B1 Italian<${process.env.SMTP_USER}>`;
+        const senderAddress = from || `ProntoCorso<${process.env.SMTP_USER}>`;
 
         try {
             const info = await this.transporter.sendMail({
@@ -49,7 +49,7 @@ export class MailService {
 
 
     private getFrom() {
-    return `B1 Italian <${process.env.SMTP_USER}>`;
+    return `ProntoCorso <${process.env.SMTP_USER}>`;
   }
 
   async sendWelcomeEmail(user: { email: string; name?: string | null }) {
@@ -60,7 +60,7 @@ export class MailService {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Welcome to B1 Italian!</title>
+        <title>Welcome to ProntoCorso!</title>
         <style>
           body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
           .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
@@ -76,16 +76,16 @@ export class MailService {
             <h1>Ciao ${name}! 🇮🇹</h1>
           </div>
           <div class="content">
-            <h2>Welcome to B1 Italian!</h2>
+            <h2>Welcome to ProntoCorso!</h2>
             <p>You're now on your journey to mastering Italian for citizenship.</p>
             <p>Complete your first lesson today and start your streak! 🔥</p>
             <a href="${process.env.CLIENT_URL}" class="btn">Start Learning Now</a>
             <p>InshaAllah, you'll reach B1 soon!</p>
             <br>
-            <p>The B1 Italian Team</p>
+            <p>The ProntoCorso Team</p>
           </div>
           <div class="footer">
-            © 2025 B1 Italian. All rights reserved.<br>
+            © 2025 ProntoCorso. All rights reserved.<br>
           </div>
         </div>
       </body>
@@ -95,7 +95,7 @@ export class MailService {
     await this.transporter.sendMail({
       from: this.getFrom(),
       to: user.email,
-      subject: 'Welcome to B1 Italian! 🇮🇹',
+      subject: 'Welcome to ProntoCorso! 🇮🇹',
       html,
     });
   }
@@ -132,16 +132,17 @@ async sendAchievementEmail(user: { email: string; name?: string | null }, badge:
           <h3>${badge.title}</h3>
           <p>${badge.description}</p>
           <p>Keep practicing — B1 citizenship is getting closer InshaAllah!</p>
-          <a href="${process.env.CLIENT_URL}" class="btn">Continue Learning</a>
+          <a href="${process.env.CLIENT_URL}/user" class="btn">Continue Learning</a>
         </div>
         <div class="footer">
-          © 2025 B1 Italian. All rights reserved.<br>
-          <a href="${process.env.CLIENT_URL}/settings">Manage Notifications</a>
+          © 2025 ProntoCorso. All rights reserved.<br>
+          <a href="${process.env.CLIENT_URL}/user/settings">Manage Notifications</a>
         </div>
       </div>
     </body>
     </html>
   `;
+  
 
   await this.transporter.sendMail({
     from: this.getFrom(),
@@ -153,7 +154,56 @@ async sendAchievementEmail(user: { email: string; name?: string | null }, badge:
 
 
 
+// In MailService
+async sendStreakReminderEmail(user: { email: string; name?: string | null }, currentStreak: number) {
+  const name = user.name?.trim() || 'Learner';
 
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Don't Break Your Streak! 🔥</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #003213; color: white; padding: 30px; text-align: center; }
+        .streak { font-size: 48px; margin: 10px 0; }
+        .content { padding: 30px; color: #333; text-align: center; }
+        .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Hey ${name}! 👋</h1>
+        </div>
+        <div class="content">
+          <div class="streak">🔥 ${currentStreak} day streak</div>
+          <h2>Don't break it today!</h2>
+          <p>Just a quick practice session will keep your streak alive and bring you closer to B1.</p>
+          <p>InshaAllah, you'll reach your goal soon!</p>
+          <a href="${process.env.CLIENT_URL}/user" class="btn">Practice Now</a>
+          <br><br>
+          <small>You can disable reminders in Settings → Notifications</small>
+        </div>
+        <div class="footer">
+          © 2025 B1 Italian. All rights reserved.<br>
+          <a href="${process.env.CLIENT_URL}/user/settings">Manage Notifications</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await this.transporter.sendMail({
+    from: this.getFrom(),
+    to: user.email,
+    subject: `Keep your ${currentStreak}-day streak alive! 🔥`,
+    html,
+  });
+}
 
 
 

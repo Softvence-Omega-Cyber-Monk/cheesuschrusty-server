@@ -27,6 +27,7 @@ import { AnalyticsModule } from './module/analytics/analytics.module';
 import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
 import { CloudinaryService } from './common/service/cloudinary/cloudinary.service';
 import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/admin-dashboard-metadata.module';
+import { StreakReminderCron } from './cron/streak-reminder.cron';
 
 
 
@@ -70,6 +71,6 @@ import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/
     AdminDashboardMetadataModule
   ],
   controllers: [AppController],
-  providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService],
+  providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService,StreakReminderCron],
 })
 export class AppModule {}

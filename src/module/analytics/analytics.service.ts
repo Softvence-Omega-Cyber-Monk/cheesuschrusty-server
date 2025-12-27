@@ -1,17 +1,20 @@
 // src/module/analytics/analytics.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
-import { LessonType, SkillArea } from '@prisma/client';
+import { BadgeType, LessonType, SkillArea } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 
 
 @Injectable()
 export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
   constructor(
     private prisma: PrismaService,
     private practiceSessionService: PracticeSessionService,
     private cefrConfidenceService: CefrConfidenceService,
+    private mailService: MailService,
   ) {}
 
 
@@ -343,6 +346,126 @@ private async getWeeklyPerformance(userId: string) {
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${diffDays >= 14 ? 's' : ''} ago`;
     return new Date(date).toLocaleDateString();
   }
+
+
+
+  /**
+   * Check and award badges based on user performance
+   * Call this after every practice session completion
+   */
+  /**
+ * Check and award badges based on user performance
+ * Call this after every practice session completion
+ */
+async checkAndAwardBadges(userId: string): Promise<void> {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      earnedBadges: {
+        include: { badge: true },
+      },
+      cefrConfidence: true,
+    },
+  });
+
+  if (!user) return;
+
+  // Get global admin settings
+  const globalSettings = await this.prisma.notificationSettings.findUnique({
+    where: { id: 1 },
+  });
+
+  const badges = await this.prisma.badge.findMany();
+
+  const newBadgesEarned: { badge: any }[] = [];
+
+  for (const badge of badges) {
+    // Skip if already earned
+    const alreadyHas = user.earnedBadges.some(ub => ub.badgeId === badge.id);
+    if (alreadyHas) continue;
+
+    let shouldAward = false;
+
+    switch (badge.type) {
+      case BadgeType.STREAK:
+        if (user.currentStreak >= (badge.threshold || 0)) shouldAward = true;
+        break;
+
+      case BadgeType.LESSONS:
+        if (user.lessonsCompleted >= (badge.threshold || 0)) shouldAward = true;
+        break;
+
+      case BadgeType.TIME:
+        if (user.totalMinutesStudied >= (badge.threshold || 0)) shouldAward = true;
+        break;
+
+      case BadgeType.ACCURACY:
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const recentSessions = await this.prisma.practiceSession.findMany({
+          where: {
+            userId,
+            completedAt: { gte: sevenDaysAgo },
+          },
+        });
+
+        const avgAccuracy = recentSessions.length > 0
+          ? recentSessions.reduce((sum, s) => sum + s.accuracy, 0) / recentSessions.length
+          : 0;
+
+        if (avgAccuracy >= (badge.threshold || 0)) shouldAward = true;
+        break;
+
+      case BadgeType.SKILL_MASTERY:
+        if (!badge.skillArea) break;
+        const skillConfidence = user.cefrConfidence.find(c => c.skillArea === badge.skillArea);
+        if (skillConfidence && ['B1', 'B2', 'C1', 'C2'].includes(skillConfidence.cefrLevel)) {
+          shouldAward = true;
+        }
+        break;
+
+      case BadgeType.CITIZENSHIP_READY:
+        const highConfidenceCount = user.cefrConfidence.filter(c => c.confidenceLevel === 'HIGH').length;
+        if (highConfidenceCount === 4) shouldAward = true;
+        break;
+    }
+
+    if (shouldAward) {
+      await this.prisma.userBadge.create({
+        data: {
+          userId,
+          badgeId: badge.id,
+        },
+      });
+
+      newBadgesEarned.push({ badge });
+
+      this.logger.log(`Badge awarded: ${badge.title} to user ${userId}`);
+    }
+  }
+
+  // SEND ACHIEVEMENT EMAIL ONLY IF:
+  // 1. User has achievementAlertsEnabled = true
+  // 2. Admin has achievementNotifications = true (global toggle)
+  if (
+    user.achievementAlertsEnabled &&
+    globalSettings?.achievementNotifications === true &&
+    newBadgesEarned.length > 0
+  ) {
+    for (const { badge } of newBadgesEarned) {
+      try {
+        await this.mailService.sendAchievementEmail(
+          { email: user.email, name: user.name },
+          { title: badge.title, icon: badge.icon, description: badge.description }
+        );
+        this.logger.log(`Achievement email sent: ${badge.title} to ${user.email}`);
+      } catch (error) {
+        this.logger.error(`Failed to send achievement email for ${badge.title} to ${user.email}`, error);
+      }
+    }
+  }
+}
 
   private async getRecentSessions(userId: string) {
     const sessions = await this.prisma.practiceSession.findMany({
