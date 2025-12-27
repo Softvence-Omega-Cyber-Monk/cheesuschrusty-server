@@ -15,7 +15,7 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: ["http://localhost:5173","http://localhost:5174","https://cheesuschrustyy.netlify.app","http://72.62.26.34:4173","https://cheescusty.netlify.app"], 
+    origin: ["http://localhost:5173","http://localhost:5174","https://cheesuschrustyy.netlify.app","http://72.62.26.34:4173","https://cheescusty.netlify.app","https://prontocorso.com"], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
