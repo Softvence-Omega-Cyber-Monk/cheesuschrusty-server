@@ -39,6 +39,7 @@ export class SubscriptionPlanService {
           lemonVariantId: dto.lemonVariantId,
           price: dto.price,
           isActive: dto.isActive,
+          description: dto.description, 
         },
       });
     } catch (error) {

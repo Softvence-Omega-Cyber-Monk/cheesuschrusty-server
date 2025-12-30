@@ -332,7 +332,7 @@ model StudyPlan {
 
 model Subscription {
   id                   String   @id @default(uuid())
-  userId               String   @unique
+  userId               String   
 
   lemonCustomerId      String?
   lemonSubscriptionId String?  @unique 
@@ -345,6 +345,8 @@ model Subscription {
 
   createdAt            DateTime @default(now())
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }
 
 

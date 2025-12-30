@@ -44,7 +44,7 @@ export class SeederService implements OnApplicationBootstrap {
  async seedPlans() {
     this.logger.log('Starting plan seeding via Lemon Squeezy...');
     const monthlyVariantId = process.env.LEMON_VARIANT_ID_MONTHLY as string;
-    const yearlyVariantId = process.env.LEMON_VARIANT_ID_YEARLY as string;
+    const lifetimeVariantId = process.env.LEMON_VARIANT_ID_LIFE_TIME as string;
 
     // --- PRO MONTHLY PLAN ---
     const monthlyPlan = await this.prisma.plan.upsert({
@@ -76,11 +76,11 @@ export class SeederService implements OnApplicationBootstrap {
     });
 
     // --- PRO YEARLY PLAN ---
-    const yearlyPlan = await this.prisma.plan.upsert({
-      where: { alias: 'PRO_YEARLY' },
+    const LifetimePlan = await this.prisma.plan.upsert({
+      where: { alias: 'PRO_LIFETIME' },
       update: {
-        lemonVariantId: yearlyVariantId,
-        price: 290.99,
+        lemonVariantId: lifetimeVariantId,
+        price: 199.99,
         description: [
            'Unlimited Exam Logic Modules',
           'Full Adaptive Memory Flashcards',
@@ -89,23 +89,23 @@ export class SeederService implements OnApplicationBootstrap {
         ],
       },
       create: {
-        alias: 'PRO_YEARLY',
-        name: 'Pro Yearly',
+        alias: 'PRO_LIFETIME',
+        name: 'Lifetime Access',
         description: [
            'Unlimited Exam Logic Modules',
           'Full Adaptive Memory Flashcards',
           'Instant AI Tactical Feedback',
           'Real-Time Mock Assessments',
         ],
-        lemonVariantId: yearlyVariantId,
-        price: 290.99,
-        interval: 'year',
+        lemonVariantId: lifetimeVariantId,
+        price: 199.99,
+        interval: 'one_time',
         isActive: true,
       },
     });
 
     this.logger.log('Plan seeding finished successfully.');
-    return [monthlyPlan, yearlyPlan];
+    return [monthlyPlan, LifetimePlan];
   }
 
 

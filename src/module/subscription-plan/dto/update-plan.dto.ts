@@ -4,7 +4,9 @@ import {
   IsNotEmpty, 
   IsPositive, 
   IsBoolean, 
-  IsOptional, 
+  IsOptional,
+  IsArray,
+  ArrayNotEmpty, 
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -25,6 +27,14 @@ export class UpdatePlanDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+
+  @ApiProperty({ description: 'Description of the plan (array of strings)', required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  description?: string[];
 
   
 }
