@@ -55,7 +55,7 @@ export class QuestionSetController {
   // 2. GET Single QuestionSet by Lesson ID + SubCategory
   // ----------------------------------------------------
   @Get(':lessonId')
-  @Roles(Role.USER)
+  @Roles(Role.USER,Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
   @ApiOperation({
     summary: 'Get a specific QuestionSet for a lesson.',
     description: 'Returns the structured activity content for the selected SubCategoryType.',
