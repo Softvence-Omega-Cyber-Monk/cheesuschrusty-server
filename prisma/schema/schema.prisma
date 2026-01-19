@@ -510,3 +510,12 @@ model NotificationSettings {
 
   @@map("notification_settings")
 }
+model SystemPrompt {
+  id        String   @id @default(cuid())
+  key       String   @unique  
+  content   String   @db.Text 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_prompts")
+}
