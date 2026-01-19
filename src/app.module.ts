@@ -28,6 +28,7 @@ import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
 import { CloudinaryService } from './common/service/cloudinary/cloudinary.service';
 import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/admin-dashboard-metadata.module';
 import { StreakReminderCron } from './cron/streak-reminder.cron';
+import { PromptModule } from './module/prompt/prompt.module';
 
 
 
@@ -68,7 +69,8 @@ import { StreakReminderCron } from './cron/streak-reminder.cron';
     PracticeSessionModule,
     AnalyticsModule,
     LeaderboardModule,
-    AdminDashboardMetadataModule
+    AdminDashboardMetadataModule,
+    PromptModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService,StreakReminderCron],

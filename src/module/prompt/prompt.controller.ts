@@ -13,11 +13,6 @@ import { Public } from 'src/common/decorators/public.decorators';
 @Controller('prompts')
 export class PromptController {
   constructor(private promptService: PromptService) {}
-
-  // ===========================
-  // ADMIN ROUTES (Protected)
-  // ===========================
-
   @Post('master-prompt-questions')
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
   @ApiBearerAuth()
