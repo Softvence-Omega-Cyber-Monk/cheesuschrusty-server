@@ -16,11 +16,11 @@ export class PromptController {
   @Post('master-prompt-questions')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Set Question',
-    description: 'Set or update the master prompt used for generating questions. This endpoint is publicly accessible and does not require authentication.'
+    description: 'Set or update the master prompt used for generating questions. This will replace any existing prompt. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
-    description: 'Master prompt text for question generation',
+    description: 'Master prompt text for question generation (will replace existing prompt)',
     examples: {
       example1: {
         summary: 'Question Generation Prompt',
@@ -32,7 +32,7 @@ export class PromptController {
   })
   @ApiResponse({ 
     status: 200, 
-    description: 'Master prompt for questions updated successfully',
+    description: 'Master prompt for questions updated successfully (previous prompt has been replaced)',
     schema: {
       example: {
         success: true,
@@ -60,11 +60,11 @@ export class PromptController {
   @Post('master-prompt-feedback')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Feedback',
-    description: 'Set or update the master prompt used for providing feedback on student answers. This endpoint is publicly accessible and does not require authentication.'
+    description: 'Set or update the master prompt used for providing feedback on student answers. This will replace any existing prompt. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
-    description: 'Master prompt text for feedback generation',
+    description: 'Master prompt text for feedback generation (will replace existing prompt)',
     examples: {
       example1: {
         summary: 'Feedback Generation Prompt',
@@ -76,7 +76,7 @@ export class PromptController {
   })
   @ApiResponse({ 
     status: 200, 
-    description: 'Master prompt for feedback updated successfully',
+    description: 'Master prompt for feedback updated successfully (previous prompt has been replaced)',
     schema: {
       example: {
         success: true,
@@ -107,7 +107,7 @@ export class PromptController {
   @Public()
   @Get('master-prompt-questions')
   @ApiOperation({ 
-    summary: 'Get Master Prompt for Set Question',
+    summary: 'Get Current Master Prompt for Set Question',
     description: 'Retrieve the current master prompt used for generating questions. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiResponse({ 
@@ -142,7 +142,7 @@ export class PromptController {
   @Public()
   @Get('master-prompt-feedback')
   @ApiOperation({ 
-    summary: 'Get Master Prompt for Feedback',
+    summary: 'Get Current Master Prompt for Feedback',
     description: 'Retrieve the current master prompt used for providing feedback on student answers. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiResponse({ 
