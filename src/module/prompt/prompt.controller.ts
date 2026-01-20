@@ -1,24 +1,22 @@
 // src/prompt/prompt.controller.ts
 import { Body, Controller, Get, HttpStatus, Post, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 import { PromptService } from './prompt.service';
 import { UpdatePromptDto } from './dto/prompt.dto';
 import sendResponse from '../utils/sendResponse';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { Role } from '@prisma/client';
 import { Public } from 'src/common/decorators/public.decorators';
 
 @ApiTags('System Prompts')
 @Controller('prompts')
 export class PromptController {
   constructor(private promptService: PromptService) {}
+
+  @Public()
   @Post('master-prompt-questions')
-  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
-  @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Update Master Prompt for Set Question',
-    description: 'Allows admins to set or update the master prompt used for generating questions. Only SUPER_ADMIN and CONTENT_MANAGER roles can access this endpoint.'
+    description: 'Set or update the master prompt used for generating questions. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
@@ -48,8 +46,6 @@ export class PromptController {
     }
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid prompt data' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   async updateMasterPromptQuestions(@Body() dto: UpdatePromptDto, @Res() res: Response) {
     const result = await this.promptService.updateMasterPromptQuestions(dto);
     return sendResponse(res, {
@@ -60,12 +56,11 @@ export class PromptController {
     });
   }
 
+  @Public()
   @Post('master-prompt-feedback')
-  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
-  @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Update Master Prompt for Feedback',
-    description: 'Allows admins to set or update the master prompt used for providing feedback on student answers. Only SUPER_ADMIN and CONTENT_MANAGER roles can access this endpoint.'
+    description: 'Set or update the master prompt used for providing feedback on student answers. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
@@ -95,8 +90,6 @@ export class PromptController {
     }
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid prompt data' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
   async updateMasterPromptFeedback(@Body() dto: UpdatePromptDto, @Res() res: Response) {
     const result = await this.promptService.updateMasterPromptFeedback(dto);
     return sendResponse(res, {
