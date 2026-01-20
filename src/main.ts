@@ -15,6 +15,13 @@ async function bootstrap() {
     bodyParser: true,
   });
 
+  app.use('/prompts/*/raw', express.text({
+    type: 'text/plain',
+    limit: '50mb' // Allow large prompts
+  }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
   app.enableCors({
     origin: ["http://localhost:5173", "http://localhost:5174", "https://cheesuschrustyy.netlify.app", "http://72.62.26.34:4173", "https://cheescusty.netlify.app", "https://prontocorso.com"],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -37,12 +44,6 @@ async function bootstrap() {
     });
   });
 
-  app.use('/prompts/*/raw', express.text({
-    type: 'text/plain',
-    limit: '50mb' // Allow large prompts
-  }));
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
