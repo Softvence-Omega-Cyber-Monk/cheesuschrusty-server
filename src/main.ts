@@ -7,6 +7,7 @@ import { PrismaService } from './common/service/prisma/prisma.service';
 import { setupSwagger } from './swagger/swagger.setup';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import * as bodyParser from 'body-parser';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -15,7 +16,7 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: ["http://localhost:5173","http://localhost:5174","https://cheesuschrustyy.netlify.app","http://72.62.26.34:4173","https://cheescusty.netlify.app","https://prontocorso.com"], 
+    origin: ["http://localhost:5173", "http://localhost:5174", "https://cheesuschrustyy.netlify.app", "http://72.62.26.34:4173", "https://cheescusty.netlify.app", "https://prontocorso.com"],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -28,18 +29,20 @@ async function bootstrap() {
     new RolesGuard(reflector),
   );
 
-app.use('/subscriptions/webhook', (req, res, next) => {
-  bodyParser.raw({ type: 'application/json' })(req, res, (err) => {
-    if (err) return next(err);
-    req.rawBody = req.body;
-    next();
+  app.use('/subscriptions/webhook', (req, res, next) => {
+    bodyParser.raw({ type: 'application/json' })(req, res, (err) => {
+      if (err) return next(err);
+      req.rawBody = req.body;
+      next();
+    });
   });
-});
 
-
-
-
-
+  app.use('/prompts/*/raw', express.text({
+    type: 'text/plain',
+    limit: '50mb' // Allow large prompts
+  }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -55,7 +58,7 @@ app.use('/subscriptions/webhook', (req, res, next) => {
 
 
 
- setupSwagger(app);
+  setupSwagger(app);
   await app.listen(process.env.PORT ?? 3000);
 }
 

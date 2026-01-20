@@ -12,42 +12,128 @@ import { Public } from 'src/common/decorators/public.decorators';
 export class PromptController {
   constructor(private promptService: PromptService) {}
 
+  // ===========================
+  // RAW TEXT ENDPOINTS (Recommended for large prompts with special characters)
+  // ===========================
+
+  @Public()
+  @Post('master-prompt-questions/raw')
+  @ApiOperation({ 
+    summary: 'Update Master Prompt for Questions (Raw Text)',
+    description: 'Set or update the master prompt using raw text format. This endpoint accepts plain text directly in the request body without JSON encoding, preserving ALL characters including newlines, quotes, brackets, and special symbols exactly as sent. Content-Type must be text/plain. This is the RECOMMENDED method for uploading complex prompts.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Master prompt for questions updated successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Master prompt for questions updated successfully',
+        data: {
+          key: 'PROMPT_QUESTIONS',
+          content: '# Question Generation Prompt (v1.0)\n\nYou are an expert...',
+          updatedAt: '2026-01-19T10:30:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - Empty or invalid prompt text' })
+  async updateMasterPromptQuestionsRaw(@Body() rawText: string, @Res() res: Response) {
+    // Validate that text is not empty
+    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Prompt text is required and cannot be empty',
+        data: null,
+      });
+    }
+
+    // Validate max length (50,000 characters)
+    if (rawText.length > 50000) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Prompt text cannot exceed 50,000 characters',
+        data: null,
+      });
+    }
+
+    const result = await this.promptService.updateMasterPromptQuestions({ promptText: rawText });
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: result.message,
+      data: result.prompt,
+    });
+  }
+
+  @Public()
+  @Post('master-prompt-feedback/raw')
+  @ApiOperation({ 
+    summary: 'Update Master Prompt for Feedback (Raw Text)',
+    description: 'Set or update the master prompt using raw text format. This endpoint accepts plain text directly in the request body without JSON encoding, preserving ALL characters including newlines, quotes, brackets, and special symbols exactly as sent. Content-Type must be text/plain. This is the RECOMMENDED method for uploading complex prompts.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Master prompt for feedback updated successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Master prompt for feedback updated successfully',
+        data: {
+          key: 'PROMPT_FEEDBACK',
+          content: '# CEFR B1C Feedback Prompt (v2.8)...',
+          updatedAt: '2026-01-19T10:30:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - Empty or invalid prompt text' })
+  async updateMasterPromptFeedbackRaw(@Body() rawText: string, @Res() res: Response) {
+    // Validate that text is not empty
+    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Prompt text is required and cannot be empty',
+        data: null,
+      });
+    }
+
+    // Validate max length (50,000 characters)
+    if (rawText.length > 50000) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Prompt text cannot exceed 50,000 characters',
+        data: null,
+      });
+    }
+
+    const result = await this.promptService.updateMasterPromptFeedback({ promptText: rawText });
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: result.message,
+      data: result.prompt,
+    });
+  }
+
   @Public()
   @Post('master-prompt-questions')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Set Question',
-    description: 'Set or update the master prompt used for generating questions. This will replace any existing prompt. Accepts full prompt text including all instructions, rules, templates, and examples. This endpoint is publicly accessible and does not require authentication.'
+    description: 'Set or update the master prompt used for generating questions. This will replace any existing prompt. Accepts full prompt text including all instructions, rules, templates, and examples. Send as JSON with properly escaped newlines (\\n) or use text/plain content-type. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
-    description: 'Complete master prompt text for question generation (will replace existing prompt). Include all system instructions, rules, examples, and templates.',
+    description: 'Complete master prompt text for question generation (will replace existing prompt). Include all system instructions, rules, examples, and templates. IMPORTANT: When sending via JSON, escape newlines as \\n or send the content-type as text/plain.',
     examples: {
       example1: {
-        summary: 'Question Generation Prompt',
+        summary: 'Question Generation Prompt (JSON format)',
         value: {
-          promptText: `# Question Generation Prompt (v1.0)
-
-You are an expert language instructor specializing in English as a Second Language (ESL).
-
-## TASK
-Generate comprehension questions based on the given text that test vocabulary, grammar, and understanding.
-
-## RULES
-* Create 5-10 questions per text
-* Include multiple choice options (A, B, C, D)
-* Target B1-B2 CEFR level
-* Focus on main ideas and details
-
-## OUTPUT FORMAT
-1. Question text
-   A) Option 1
-   B) Option 2
-   C) Option 3
-   D) Option 4
-   Answer: {letter}
-
-## EXAMPLE
-...`
+          promptText: "# Question Generation Prompt (v1.0)\n\nYou are an expert language instructor.\n\n## RULES\n* Create 5-10 questions per text\n* Include multiple choice options"
         }
       }
     }
@@ -67,7 +153,10 @@ Generate comprehension questions based on the given text that test vocabulary, g
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Bad request - Invalid prompt data' })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Bad request - Invalid prompt data. Make sure newlines are escaped as \\n in JSON, or the prompt text is properly formatted.' 
+  })
   async updateMasterPromptQuestions(@Body() dto: UpdatePromptDto, @Res() res: Response) {
     const result = await this.promptService.updateMasterPromptQuestions(dto);
     return sendResponse(res, {
@@ -82,56 +171,16 @@ Generate comprehension questions based on the given text that test vocabulary, g
   @Post('master-prompt-feedback')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Feedback',
-    description: 'Set or update the master prompt used for providing feedback on student answers. This will replace any existing prompt. Accepts complete prompt text including all instructions, scoring rubrics, templates, and examples. This endpoint is publicly accessible and does not require authentication.'
+    description: 'Set or update the master prompt used for providing feedback on student answers. This will replace any existing prompt. Accepts complete prompt text including all instructions, scoring rubrics, templates, and examples. Send as JSON with properly escaped newlines (\\n) or use text/plain content-type. This endpoint is publicly accessible and does not require authentication.'
   })
   @ApiBody({
     type: UpdatePromptDto,
-    description: 'Complete master prompt text for feedback generation (will replace existing prompt). Include all system instructions, rubrics, scoring bands, templates, and examples.',
+    description: 'Complete master prompt text for feedback generation (will replace existing prompt). Include all system instructions, rubrics, scoring bands, templates, and examples. IMPORTANT: When sending via JSON, escape newlines as \\n or send the content-type as text/plain.',
     examples: {
       example1: {
-        summary: 'CEFR B1C Feedback Prompt',
+        summary: 'CEFR B1C Feedback Prompt (JSON format)',
         value: {
-          promptText: `# CEFR B1C Feedback Prompt (v2.8 - Performance Snapshot)
-
-You are an accurate, honest, motivating CEFR feedback coach and calibrated rater for Italian B1 cittadinanza (B1C). Apply official-style B1 descriptors conservatively.
-
-**SYSTEM MODE** -> ONE-SHOT EVALUATOR
-**LANGUAGE** -> Italian
-**FEEDBACK LANGUAGE** -> English
-
-## TASK REGISTRY
-* **L-01:** Listening (Short Interactions). 6 dialogues. MCQ (4 options).
-* **R-01:** Reading (Information Search). 4 texts. 5 statements to match.
-* **W-01:** Writing (Functional). Email to authority. 80-120 words.
-
-## SCORING RULES
-### BAND MAP
-* 0-29 = A1
-* 30-49 = A2
-* 60-74 = B1
-* 75-89 = B1+
-* 90-100 = B2+
-
-## OUTPUT TEMPLATE
-==================================
-B1 Cittadinanza Italiana - {TASK}
-
-✅ What you already do really well
-• {Strength 1}. Evidence: "{quote}". Why it helps B1C: {reason}
-
-🔧 Small, concrete steps to improve
-• {Upgrade 1}. Evidence: "{quote}". Try it now: {micro-drill}
-
-📊 Level demonstrated in this task
-{bands}
-
-🎯 Score for this submission
-{X} / 100
-
-💡 Your 5-minute power tip
-{tip in English}
-{tip in Italian}
-==================================`
+          promptText: "# CEFR B1C Feedback Prompt (v2.8)\n\nYou are an accurate, honest, motivating CEFR feedback coach.\n\n## TASK REGISTRY\n* **L-01:** Listening (Short Interactions)\n\n## SCORING RULES\n* 0-29 = A1\n* 60-74 = B1"
         }
       }
     }
@@ -151,7 +200,10 @@ B1 Cittadinanza Italiana - {TASK}
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Bad request - Invalid prompt data' })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Bad request - Invalid prompt data. Make sure newlines are escaped as \\n in JSON, or the prompt text is properly formatted.' 
+  })
   async updateMasterPromptFeedback(@Body() dto: UpdatePromptDto, @Res() res: Response) {
     const result = await this.promptService.updateMasterPromptFeedback(dto);
     return sendResponse(res, {
