@@ -17,7 +17,7 @@ async function bootstrap() {
 
   // Handle raw text for /prompts/.../raw endpoints FIRST
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.path.includes('/prompts/') && req.path.endsWith('/raw')) {
+    if (req.path.includes('/prompts/')) {
       return bodyParser.text({ 
         type: '*/*', 
         limit: '50mb' 
