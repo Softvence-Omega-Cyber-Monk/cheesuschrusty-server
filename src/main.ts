@@ -12,13 +12,21 @@ import * as express from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
-    bodyParser: true,
+    bodyParser: false, // Disable default body parser
   });
 
-  app.use('/prompts/*/raw', express.text({
-    type: 'text/plain',
-    limit: '50mb' // Allow large prompts
-  }));
+  // Handle raw text for /prompts/.../raw endpoints FIRST
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.includes('/prompts/') && req.path.endsWith('/raw')) {
+      return bodyParser.text({ 
+        type: '*/*', 
+        limit: '50mb' 
+      })(req, res, next);
+    }
+    next();
+  });
+
+  // Then apply JSON and URL-encoded parsers for other routes
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -54,10 +62,6 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());
-
-
-
-
 
   setupSwagger(app);
   await app.listen(process.env.PORT ?? 3000);

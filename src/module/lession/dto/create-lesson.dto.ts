@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsIn } from 'class-validator';
-import { LessonType, Difficulty, AIProvider } from '@prisma/client'; 
-import { ApiProperty } from '@nestjs/swagger'; 
+import { LessonType, Difficulty, AIProvider } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
 
 const lessonTypes = Object.values(LessonType);
 // const difficultyLevels = Object.values(Difficulty);
@@ -38,7 +38,7 @@ export class CreateLessonContainerDto {
   // @IsString()
   // @IsIn(difficultyLevels)
   // difficulty: Difficulty;
-  
+
   @ApiProperty({
     description: 'The AI provider chosen by the admin for generating this content.',
     enum: aiProviders,
@@ -48,4 +48,20 @@ export class CreateLessonContainerDto {
   @IsString()
   @IsIn(aiProviders)
   provider: AIProvider;
+
+  @ApiProperty({
+    description: 'Task Format',
+    example: 'Formal Interaction'
+  })
+  @IsNotEmpty()
+  @IsString()
+  format: string
+
+  @ApiProperty({
+    description: 'Domain',
+    example: 'Auto (Automotive and Transport)'
+  })
+  @IsNotEmpty()
+  @IsString()
+  domain: string
 }

@@ -12,7 +12,7 @@ export class PromptController {
   constructor(private promptService: PromptService) {}
 
   @Public()
-  @Post('master-prompt-questions')
+  @Post('master-prompt-questions/raw')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Questions (Raw Text)',
     description: 'Set or update the master prompt used for generating questions. Send the complete prompt as plain text in the request body. All characters (quotes, brackets, newlines, symbols) are preserved exactly as sent. Content-Type must be text/plain.'
@@ -64,7 +64,7 @@ export class PromptController {
   }
 
   @Public()
-  @Post('master-prompt-feedback')
+  @Post('master-prompt-feedback/raw')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Feedback (Raw Text)',
     description: 'Set or update the master prompt used for providing feedback. Send the complete prompt as plain text in the request body. All characters (quotes, brackets, newlines, symbols) are preserved exactly as sent. Content-Type must be text/plain.'

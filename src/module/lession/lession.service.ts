@@ -23,6 +23,8 @@ export class LessionService {
         title: dto.title,
         type: dto.type,
         provider: dto.provider,
+        domain: dto.domain,
+        format: dto.format,
         isPublished: false,
       },
     });

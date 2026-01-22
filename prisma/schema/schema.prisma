@@ -75,6 +75,7 @@ enum TicketPriority {
 enum AIProvider {
   OPENAI
   GROK
+  GEMINI
 }
 
 enum SkillArea {
@@ -216,6 +217,8 @@ model Lesson {
   type         LessonType
   difficulty   Difficulty   @default(B1)
   provider     AIProvider?
+  domain       String?
+  format       String?
   isPublished  Boolean      @default(false)
   createdAt    DateTime     @default(now())
 
