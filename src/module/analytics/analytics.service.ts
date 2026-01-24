@@ -77,7 +77,7 @@ async getOverviewDashboard(userId: string) {
       const total = await this.prisma.lesson.count({
         where: {
           isPublished: true,
-          type: skill.toUpperCase() as LessonType,
+          skill: skill.toUpperCase() as LessonType,  // Changed from 'type' to 'skill'
         },
       });
 
@@ -175,7 +175,7 @@ async getPracticeDashboard(userId: string) {
       const total = await this.prisma.lesson.count({
         where: {
           isPublished: true,
-          type: skill.toUpperCase() as LessonType,
+          skill: skill.toUpperCase() as LessonType,  // Changed from 'type' to 'skill'
         },
       });
 
@@ -268,7 +268,6 @@ private getSkillTitle(skill: SkillArea): string {
 private async getWeeklyPerformance(userId: string) {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  // ← ADD THIS TYPE DEFINITION
   const result: { day: string; minutes: number; accuracy: number }[] = [];
 
   for (let i = 6; i >= 0; i--) {
@@ -353,10 +352,6 @@ private async getWeeklyPerformance(userId: string) {
    * Check and award badges based on user performance
    * Call this after every practice session completion
    */
-  /**
- * Check and award badges based on user performance
- * Call this after every practice session completion
- */
 async checkAndAwardBadges(userId: string): Promise<void> {
   const user = await this.prisma.user.findUnique({
     where: { id: userId },
@@ -474,13 +469,13 @@ async checkAndAwardBadges(userId: string): Promise<void> {
       take: 6,
       include: {
         lesson: {
-          select: { title: true, type: true },
+          select: { task_id: true, skill: true },  // Changed from title/type to task_id/skill
         },
       },
     });
 
     return sessions.map(s => ({
-      title: s.lesson ? `${s.lesson.type} - ${s.lesson.title}` : 'Flashcard Practice',
+      title: s.lesson ? `${s.lesson.skill || 'Unknown'} - ${s.lesson.task_id || 'Untitled'}` : 'Flashcard Practice',
       duration: `${Math.floor(s.durationSeconds / 60)} min`,
       accuracy: `${Math.floor(s.accuracy)}%`,
       date: new Date(s.completedAt).toLocaleDateString(),

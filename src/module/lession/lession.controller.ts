@@ -83,7 +83,7 @@ export class LessonController {
       SPEAKING: 'speaking',
     };
 
-    const skillArea = skillAreaMap[lesson.type] as SkillArea;
+    const skillArea = skillAreaMap[lesson.skill || 'READING'] as SkillArea;
 
     // 2. Save via PracticeSessionService
     await this.practiceSessionService.createSession({
