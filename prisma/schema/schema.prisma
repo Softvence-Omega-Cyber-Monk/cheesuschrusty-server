@@ -7,8 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
 // ------------------------
 // ENUMS
 // ------------------------
@@ -101,42 +99,40 @@ enum PerformanceTrend {
 // USER
 // ------------------------
 model User {
-  id            String     @id @default(uuid())
-  email         String     @unique
-  emailVerified Boolean    @default(false)
+  id            String  @id @default(uuid())
+  email         String  @unique
+  emailVerified Boolean @default(false)
   password      String?
   name          String?
   avatar        String?
-  isActive      Boolean    @default(true)
-  hasUsedTrial  Boolean    @default(false)
-  role          Role       @default(USER)
+  isActive      Boolean @default(true)
+  hasUsedTrial  Boolean @default(false)
+  role          Role    @default(USER)
 
-  nativeLang    String     @default("English")
-  targetLang    String     @default("Italian")
-  currentLevel  Difficulty @default(B1)
+  nativeLang   String     @default("English")
+  targetLang   String     @default("Italian")
+  currentLevel Difficulty @default(B1)
 
-  xp                      Int      @default(0)
-  currentStreak           Int      @default(0)
-  longestStreak           Int      @default(0)
-  lastPracticeDate        DateTime?
-  totalMinutesStudied     Int      @default(0)
-  wordsLearned            Int      @default(0)
-  lessonsCompleted        Int      @default(0)
-  dailyGoalMinutes        Int      @default(20)
-  timezone                String?
-  lemonCustomerId         String?   @unique  
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  xp                  Int       @default(0)
+  currentStreak       Int       @default(0)
+  longestStreak       Int       @default(0)
+  lastPracticeDate    DateTime?
+  totalMinutesStudied Int       @default(0)
+  wordsLearned        Int       @default(0)
+  lessonsCompleted    Int       @default(0)
+  dailyGoalMinutes    Int       @default(20)
+  timezone            String?
+  lemonCustomerId     String?   @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  failedLoginAttempts     Int      @default(0)
-  lastLoginAt             DateTime?
-  lockedUntil             DateTime?
+  failedLoginAttempts Int       @default(0)
+  lastLoginAt         DateTime?
+  lockedUntil         DateTime?
 
-
-
-weeklyUpdateEnabled         Boolean   @default(true)
-streakRemindersEnabled      Boolean   @default(true)
-achievementAlertsEnabled    Boolean   @default(true)
+  weeklyUpdateEnabled      Boolean @default(true)
+  streakRemindersEnabled   Boolean @default(true)
+  achievementAlertsEnabled Boolean @default(true)
 
   // Relations
   practiceSessions        PracticeSession[]
@@ -154,7 +150,6 @@ achievementAlertsEnabled    Boolean   @default(true)
   @@map("users")
 }
 
-
 model OtpCode {
   id        String   @id @default(uuid())
   email     String
@@ -164,25 +159,20 @@ model OtpCode {
   createdAt DateTime @default(now())
 }
 
-
-
-
-
-
 // ------------------------
 // BADGES SYSTEM
 // ------------------------
 
 model Badge {
-  id          Int      @id @default(autoincrement())
-  title       String   @unique // e.g., "7 Day Streak"
+  id          Int        @id @default(autoincrement())
+  title       String     @unique // e.g., "7 Day Streak"
   description String
-  icon        String   // emoji or icon name
+  icon        String // emoji or icon name
   type        BadgeType
-  threshold   Int?     // for streak, lessons, etc.
+  threshold   Int? // for streak, lessons, etc.
   skillArea   SkillArea? // for skill-specific badges
 
-  earnedBy    UserBadge[]
+  earnedBy UserBadge[]
 
   @@map("badges")
 }
@@ -197,12 +187,12 @@ enum BadgeType {
 }
 
 model UserBadge {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badgeId   Int
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-  earnedAt  DateTime @default(now())
+  id       Int      @id @default(autoincrement())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  Int
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt DateTime @default(now())
 
   @@unique([userId, badgeId])
   @@map("user_badges")
@@ -212,32 +202,30 @@ model UserBadge {
 // LESSONS
 // ------------------------
 model Lesson {
-  id           Int          @id @default(autoincrement())
-  title        String
-  type         LessonType
-  difficulty   Difficulty   @default(B1)
-  provider     AIProvider?
-  domain       String?
-  format       String?
-  isPublished  Boolean      @default(false)
-  createdAt    DateTime     @default(now())
+  id          Int         @id @default(autoincrement())
+  task_id     String?
+  skill       LessonType?
+  provider    AIProvider?
+  domain      String?
+  level       String?
+  isPublished Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  target_language String?
 
-  questionSets QuestionSet[]
-  practiceSessions PracticeSession[]  // ← ADD THIS LINE (for future use)
+  questionSets     QuestionSet[]
+  practiceSessions PracticeSession[] // ← ADD THIS LINE (for future use)
 
   @@map("lessons")
 }
 
 model QuestionSet {
-  id              Int             @id @default(autoincrement())
-  lessonId        Int
-  lesson          Lesson          @relation(fields: [lessonId], references: [id])
-  subCategoryType SubCategoryType
-  prompt          String          @db.Text
-  content         Json
-  createdAt       DateTime        @default(now())
+  id        Int      @id @default(autoincrement())
+  lessonId  Int
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  prompt    String   @db.Text
+  content   Json
+  createdAt DateTime @default(now())
 
-  @@unique([lessonId, subCategoryType])
   @@map("question_sets")
 }
 
@@ -245,12 +233,12 @@ model QuestionSet {
 // PRACTICE SESSION (Core tracking)
 // ------------------------
 model PracticeSession {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  lessonId        Int?      
-  lesson          Lesson?   @relation(fields: [lessonId], references: [id])  // ← ADD THIS LINE
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lessonId Int?
+  lesson   Lesson? @relation(fields: [lessonId], references: [id]) // ← ADD THIS LINE
 
   skillArea       SkillArea
   accuracy        Float
@@ -268,19 +256,19 @@ model PracticeSession {
 // FLASHCARDS
 // ------------------------
 model FlashcardCategory {
-  id         Int      @id @default(autoincrement())
+  id         Int        @id @default(autoincrement())
   title      String
   difficulty Difficulty @default(B1)
   cards      Card[]
-  createdAt  DateTime @default(now())
+  createdAt  DateTime   @default(now())
 
   @@map("flashcard_categories")
 }
 
 model Card {
-  id         Int               @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   categoryId Int
-  category   FlashcardCategory @relation(fields: [categoryId], references: [id])
+  category   FlashcardCategory   @relation(fields: [categoryId], references: [id])
   frontText  String
   backText   String
   progress   FlashcardProgress[]
@@ -334,65 +322,64 @@ model StudyPlan {
 }
 
 model Subscription {
-  id                   String   @id @default(uuid())
-  userId               String   
+  id     String @id @default(uuid())
+  userId String
 
-  lemonCustomerId      String?
-  lemonSubscriptionId String?  @unique 
-  planAlias            String?
-  plan                 SubscriptionPlan
-  status               String
+  lemonCustomerId     String?
+  lemonSubscriptionId String?          @unique
+  planAlias           String?
+  plan                SubscriptionPlan
+  status              String
 
-  currentPeriodStart   DateTime
-  currentPeriodEnd     DateTime
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
 
-  createdAt            DateTime @default(now())
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
 }
 
-
 model Plan {
-  id            Int      @id @default(autoincrement())
-  alias         String   @unique
-  name          String
-  description   String[]
-  lemonVariantId  String
-  price         Float
-  interval      String
-  currency      String   @default("USD")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  alias          String   @unique
+  name           String
+  description    String[]
+  lemonVariantId String
+  price          Float
+  interval       String
+  currency       String   @default("USD")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // ------------------------
 // SUPPORT TICKETS
 // ------------------------
 model SupportTicket {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid())
   userId    String
   subject   String
-  status    TicketStatus    @default(OPEN)
-  priority  TicketPriority  @default(MEDIUM)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority @default(MEDIUM)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  SupportTicketMessage[]
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportTicketMessage[]
 
   @@map("support_tickets")
 }
 
 model SupportTicketMessage {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   senderId  String
   sender    User          @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   message   String
-  createdAt DateTime     @default(now())
+  createdAt DateTime      @default(now())
 }
 
 // ------------------------
@@ -407,7 +394,7 @@ model UserNotification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notifications")
 }
@@ -416,32 +403,32 @@ model UserNotification {
 // CEFR CONFIDENCE SYSTEM
 // ------------------------
 model CefrConfidenceCache {
-  id                 String           @id @default(uuid())
-  userId             String
-  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skillArea          SkillArea
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillArea SkillArea
 
-  cefrLevel          Difficulty       @default(B1)
-  confidenceLower    Float            @default(0)
-  confidenceUpper    Float            @default(0)
-  confidenceLevel    ConfidenceLevel  @default(LOW)
-  performanceTrend   PerformanceTrend?
+  cefrLevel        Difficulty        @default(B1)
+  confidenceLower  Float             @default(0)
+  confidenceUpper  Float             @default(0)
+  confidenceLevel  ConfidenceLevel   @default(LOW)
+  performanceTrend PerformanceTrend?
 
-  sessionsAnalyzed   Int              @default(0)
-  lastCalculatedAt   DateTime         @default(now())
+  sessionsAnalyzed Int      @default(0)
+  lastCalculatedAt DateTime @default(now())
 
   @@unique([userId, skillArea])
   @@map("cefr_confidence_cache")
 }
 
 model ConfidenceUpdateQueue {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)  // ← ADD THIS LINE
-  skillArea  SkillArea
-  trigger    String    @default("session_milestone")
-  queuedAt   DateTime  @default(now())
-  status     String    @default("pending")
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade) // ← ADD THIS LINE
+  skillArea SkillArea
+  trigger   String    @default("session_milestone")
+  queuedAt  DateTime  @default(now())
+  status    String    @default("pending")
 
   @@unique([userId, skillArea])
   @@map("confidence_update_queue")
@@ -466,18 +453,18 @@ model BrandingSettings {
 }
 
 model SecuritySettings {
-  id                        Int      @id @default(1)
-  minPasswordLength         Int      @default(8)
-  passwordExpiryDays        Int      @default(90)
-  requireSpecialChars       Boolean  @default(true)
-  requireUppercaseLetters   Boolean  @default(true)
-  sessionTimeoutDays        Int      @default(3)
-  maxLoginAttempts          Int      @default(5)
-  dataRetentionPolicy       Boolean  @default(true)
-  dataRetentionDays         Int      @default(365)
-  gdprComplianceMode        Boolean  @default(false)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                      Int      @id @default(1)
+  minPasswordLength       Int      @default(8)
+  passwordExpiryDays      Int      @default(90)
+  requireSpecialChars     Boolean  @default(true)
+  requireUppercaseLetters Boolean  @default(true)
+  sessionTimeoutDays      Int      @default(3)
+  maxLoginAttempts        Int      @default(5)
+  dataRetentionPolicy     Boolean  @default(true)
+  dataRetentionDays       Int      @default(365)
+  gdprComplianceMode      Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   @@map("security_settings")
 }
@@ -500,23 +487,24 @@ model PlatformSettings {
 }
 
 model NotificationSettings {
-  id                        Int      @id @default(1)
-  newRegistrationAlert      Boolean  @default(true)
-  paymentRelatedAlert       Boolean  @default(true)
-  supportTicketAlert        Boolean  @default(true)
-  dailyAnalyticsSummary     Boolean  @default(false)
-  welcomeEmailEnabled       Boolean  @default(true)
-  learningRemindersEnabled  Boolean  @default(true)
-  achievementNotifications  Boolean  @default(true)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                       Int      @id @default(1)
+  newRegistrationAlert     Boolean  @default(true)
+  paymentRelatedAlert      Boolean  @default(true)
+  supportTicketAlert       Boolean  @default(true)
+  dailyAnalyticsSummary    Boolean  @default(false)
+  welcomeEmailEnabled      Boolean  @default(true)
+  learningRemindersEnabled Boolean  @default(true)
+  achievementNotifications Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   @@map("notification_settings")
 }
+
 model SystemPrompt {
   id        String   @id @default(cuid())
-  key       String   @unique  
-  content   String   @db.Text 
+  key       String   @unique
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

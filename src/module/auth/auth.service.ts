@@ -55,6 +55,7 @@ async register(dto: RegisterDto) {
       email: dto.email,
       password: hashedPassword,
       emailVerified: true,
+      role: dto.role,
       dailyGoalMinutes: dto.dailyGoalMinutes,
     },
   });

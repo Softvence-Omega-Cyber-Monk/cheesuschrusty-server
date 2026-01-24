@@ -4,13 +4,22 @@ import { UpdateNotificationSettingsDto } from './update-notification-settings.dt
 
 @Injectable()
 export class NotificationSettingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getSettings() {
-    return this.prisma.notificationSettings.findUnique({
+    let settings = await this.prisma.notificationSettings.findUnique({
       where: { id: 1 },
     });
+
+    if (!settings) {
+      settings = await this.prisma.notificationSettings.create({
+        data: { id: 1 },
+      });
+    }
+
+    return settings;
   }
+
 
   async updateSettings(dto: UpdateNotificationSettingsDto) {
     return this.prisma.notificationSettings.upsert({

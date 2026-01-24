@@ -1,17 +1,17 @@
-// src/module/question-set/question-set.admin.controller.ts
+// src/module/question-set/question-set.controller.ts
 import { 
-  Controller, Post, Body, Res, HttpStatus, Get, Param, Query, BadRequestException 
+  Controller, Post, Body, Res, HttpStatus, Get, Param, BadRequestException 
 } from '@nestjs/common';
 import { Response } from 'express';
-import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { Role, SubCategoryType } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 import sendResponse from '../utils/sendResponse';
 import { QuestionSetService } from './question-set.service';
 import { CreateQuestionSetDto } from './dto/question-set.dto';
 
-@ApiTags('Lesson QuestionSet Management (Super Admin, Content Manager, User)')
+@ApiTags('Lesson QuestionSet Management')
 @Controller('questionset')
 export class QuestionSetController {
   constructor(private readonly questionSetService: QuestionSetService) {}
@@ -26,14 +26,13 @@ export class QuestionSetController {
   }
 
   // ----------------------------------------------
-  // 1. SAVE / UPDATE QuestionSet (AI Content Step 2)
+  // 1. SAVE / UPDATE QuestionSet
   // ----------------------------------------------
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
   @ApiOperation({
-    summary: 'Save or regenerate (upsert) a QuestionSet for a lesson.',
-    description:
-      'This endpoint stores AI-generated activity content for a specific SubCategoryType of a lesson.',
+    summary: 'Save or update a QuestionSet for a lesson.',
+    description: 'This endpoint stores AI-generated content for a lesson.',
   })
   @ApiBody({ type: CreateQuestionSetDto })
   @ApiResponse({ status: 201, description: 'QuestionSet saved/updated successfully.' })
@@ -52,31 +51,24 @@ export class QuestionSetController {
   }
 
   // ----------------------------------------------------
-  // 2. GET Single QuestionSet by Lesson ID + SubCategory
+  // 2. GET QuestionSet by Lesson ID
   // ----------------------------------------------------
   @Get(':lessonId')
-  @Roles(Role.USER,Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
+  @Roles(Role.USER, Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
   @ApiOperation({
-    summary: 'Get a specific QuestionSet for a lesson.',
-    description: 'Returns the structured activity content for the selected SubCategoryType.',
+    summary: 'Get the QuestionSet for a lesson by lesson ID.',
+    description: 'Returns the structured content for the lesson.',
   })
-  @ApiParam({ name: 'lessonId', type: 'number', description: 'Parent Lesson ID' })
-  @ApiQuery({
-    name: 'subCategoryType',
-    enum: SubCategoryType,
-    description: 'The activity type to retrieve (e.g., DICTATION_EXERCISE)',
-  })
+  @ApiParam({ name: 'lessonId', type: 'number', description: 'Lesson ID' })
   @ApiResponse({ status: 200, description: 'QuestionSet retrieved successfully.' })
   @ApiResponse({ status: 404, description: 'QuestionSet not found.' })
   async getQuestionSet(
     @Param('lessonId') lessonId: string,
-    @Query('subCategoryType') subCategoryType: SubCategoryType,
     @Res() res: Response,
   ) {
     const id = this.parseLessonId(lessonId);
 
-    const questionSet =
-      await this.questionSetService.getQuestionSetBySubCategory(id, subCategoryType);
+    const questionSet = await this.questionSetService.getQuestionSetByLessonId(id);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,

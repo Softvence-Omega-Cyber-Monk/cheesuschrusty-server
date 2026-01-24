@@ -1,4 +1,3 @@
-
 // src/module/lession/lession.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Difficulty, Lesson, LessonType } from '@prisma/client';
@@ -6,25 +5,22 @@ import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { CreateLessonContainerDto } from './dto/create-lesson.dto';
-import { QuestionSetService } from '../question-set/question-set.service';
 
 @Injectable()
 export class LessionService {
-  constructor(
-    private prisma: PrismaService,
-    private questionSet: QuestionSetService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async createLessonContainer(dto: CreateLessonContainerDto): Promise<Lesson> {
-    console.log(`Attempting to create new Lesson container: ${dto.title}`);
+    console.log(`Attempting to create new Lesson container`);
 
     const newLesson = await this.prisma.lesson.create({
       data: {
-        title: dto.title,
-        type: dto.type,
         provider: dto.provider,
+        skill: dto.skill,
+        task_id: dto.task_id,
         domain: dto.domain,
-        format: dto.format,
+        level: dto.level,
+        target_language: dto.target_language,
         isPublished: false,
       },
     });
@@ -33,9 +29,6 @@ export class LessionService {
     return newLesson;
   }
 
-  /**
-   * NEW VERSION: Uses PracticeSession instead of UserLessonProgress
-   */
   async findNextLessonForUser(userId: string, type: LessonType): Promise<Lesson> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -47,21 +40,22 @@ export class LessionService {
     }
 
     const level: Difficulty = user.currentLevel;
+    const levelString = level.toString();
 
-    // 1. Get all completed lesson IDs for this user (from PracticeSession)
+    // 1. Get all completed lesson IDs
     const completedSessions = await this.prisma.practiceSession.findMany({
       where: { userId, lessonId: { not: null } },
       select: { lessonId: true },
       distinct: ['lessonId'],
     });
 
-    const completedLessonIds = completedSessions.map(s => s.lessonId!);
+    const completedLessonIds = completedSessions.map((s: any) => s.lessonId!);
 
-    // 2. Find next NEW lesson (not completed)
+    // 2. Find next NEW lesson
     let nextLesson = await this.prisma.lesson.findFirst({
       where: {
-        type: type,
-        difficulty: level,
+        skill: type,
+        level: levelString,
         isPublished: true,
         id: { notIn: completedLessonIds.length > 0 ? completedLessonIds : undefined },
       },
@@ -76,12 +70,12 @@ export class LessionService {
         where: {
           userId,
           lesson: {
-            type: type,
-            difficulty: level,
+            skill: type,
+            level: levelString,
             isPublished: true,
           },
         },
-        orderBy: { accuracy: 'asc' }, // lowest first
+        orderBy: { accuracy: 'asc' },
         include: { lesson: true },
       });
 
@@ -106,10 +100,10 @@ export class LessionService {
     const skip = (page - 1) * limit;
 
     const whereClause: any = {
-      ...(query.type && { type: query.type }),
-      ...(query.level && { difficulty: query.level }),
+      ...(query.type && { skill: query.type }),
+      ...(query.level && { level: query.level }),
       ...(query.search && {
-        title: { contains: query.search, mode: 'insensitive' },
+        task_id: { contains: query.search, mode: 'insensitive' },
       }),
     };
 
@@ -122,7 +116,7 @@ export class LessionService {
       orderBy: { createdAt: 'desc' },
       include: {
         questionSets: {
-          select: { id: true, subCategoryType: true },
+          select: { id: true },
         },
       },
     });
@@ -152,18 +146,6 @@ export class LessionService {
   }
 
   async updatePublishedStatus(lessonId: number, dto: UpdateLessonStatusDto): Promise<Lesson> {
-    if (dto.isPublished === true) {
-      const lesson = await this.prisma.lesson.findUnique({ where: { id: lessonId }, select: { type: true } });
-      if (!lesson) throw new NotFoundException(`Lesson with ID ${lessonId} not found.`);
-
-      const required = this.questionSet.getRequiredSubCategories(lesson.type);
-      const existing = await this.prisma.questionSet.count({ where: { lessonId } });
-
-      if (existing !== required.length) {
-        throw new NotFoundException(`Lesson incomplete: ${existing}/${required.length} sections`);
-      }
-    }
-
     return this.prisma.lesson.update({
       where: { id: lessonId },
       data: { isPublished: dto.isPublished },

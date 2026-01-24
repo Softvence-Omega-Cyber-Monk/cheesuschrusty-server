@@ -12,12 +12,12 @@ const aiProviders = Object.values(AIProvider);
  */
 export class CreateLessonContainerDto {
   @ApiProperty({
-    description: 'The user-facing title for the new lesson.',
-    example: 'B1 Travel Planning Dialogue',
+    description: 'Task ID',
+    example: 'L-01',
   })
   @IsNotEmpty()
   @IsString()
-  title: string;
+  task_id: string;
 
   @ApiProperty({
     description: 'The type of lesson being created (e.g., SPEAKING, LISTENING).',
@@ -27,7 +27,7 @@ export class CreateLessonContainerDto {
   @IsNotEmpty()
   @IsString()
   @IsIn(lessonTypes)
-  type: LessonType;
+  skill: LessonType;
 
   // @ApiProperty({
   //   description: 'The proficiency level this lesson is targeted at.',
@@ -50,18 +50,26 @@ export class CreateLessonContainerDto {
   provider: AIProvider;
 
   @ApiProperty({
-    description: 'Task Format',
-    example: 'Formal Interaction'
+    description: 'Level',
+    example: 'a1'
   })
   @IsNotEmpty()
   @IsString()
-  format: string
+  level: string
 
   @ApiProperty({
     description: 'Domain',
-    example: 'Auto (Automotive and Transport)'
+    example: 'Auto'
   })
   @IsNotEmpty()
   @IsString()
   domain: string
+
+  @ApiProperty({
+    description: 'Task ID',
+    example: 'L-01',
+  })
+  @IsNotEmpty()
+  @IsString()
+  target_language: string;
 }

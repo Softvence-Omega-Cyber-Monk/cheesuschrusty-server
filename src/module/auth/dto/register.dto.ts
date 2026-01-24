@@ -1,6 +1,7 @@
 // src/auth/dto/register.dto.ts
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn, IsInt } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn, IsInt, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 
 export class RegisterDto {
   @ApiPropertyOptional({
@@ -34,4 +35,12 @@ export class RegisterDto {
   @IsOptional()
   @IsInt({ message: 'Daily goal must be an integer' })
   dailyGoalMinutes?: number;
+
+  @ApiProperty({
+    description: 'Set Role',
+    example: "SUPER_ADMIN / USER"
+  })
+  @IsEnum(Role)
+  @IsOptional()
+  role: Role;
 }

@@ -2,11 +2,10 @@
 
 import { IsOptional, IsInt, IsString, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
-import { LessonType, Difficulty } from '@prisma/client';
+import { LessonType } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 const lessonTypes = Object.values(LessonType);
-const difficultyLevels = Object.values(Difficulty);
 
 export class GetLessonsQueryDto {
   @ApiPropertyOptional({
@@ -28,11 +27,11 @@ export class GetLessonsQueryDto {
   limit?: number = 20;
 
   @ApiPropertyOptional({
-    description: 'Search term applied to the lesson title',
+    description: 'Search term applied to the lesson task_id',
   })
   @IsOptional()
   @IsString()
-  search?: string; // Searches the 'prompt' field
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Filter lessons by type.',
@@ -44,11 +43,10 @@ export class GetLessonsQueryDto {
   type?: LessonType;
 
   @ApiPropertyOptional({
-    description: 'Filter lessons by difficulty level.',
-    enum: difficultyLevels,
+    description: 'Filter lessons by level (e.g., a1, a2, b1, b2, c1, c2).',
+    example: 'b1',
   })
   @IsOptional()
   @IsString()
-  @IsIn(difficultyLevels)
-  level?: Difficulty;
+  level?: string;
 }
