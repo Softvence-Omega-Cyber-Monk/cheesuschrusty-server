@@ -2,6 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# 🔥 install curl
+RUN apk add --no-cache curl
+
 COPY package*.json ./
 COPY prisma ./prisma
 
