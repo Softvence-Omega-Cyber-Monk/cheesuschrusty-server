@@ -37,14 +37,8 @@ services:
         condition: service_healthy
     command: >
       sh -c "
-      npx prisma migrate deploy &&
       node dist/main.js
       "
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   db_data:
