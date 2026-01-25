@@ -11,11 +11,16 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    rawBody: true,
-    bodyParser: false, // Disable default body parser
+    bodyParser: false, 
   });
 
-  // Handle raw text for /prompts/.../raw endpoints FIRST
+  app.use('/subscriptions/webhook', bodyParser.raw({ 
+    type: 'application/json',
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf; 
+    }
+  }));
+
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.path.includes('/prompts/')) {
       return bodyParser.text({
@@ -26,12 +31,18 @@ async function bootstrap() {
     next();
   });
 
-  // Then apply JSON and URL-encoded parsers for other routes
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   app.enableCors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "https://cheesuschrustyy.netlify.app", "http://72.62.26.34:4173", "https://cheescusty.netlify.app", "https://prontocorso.com"],
+    origin: [
+      "http://localhost:5173", 
+      "http://localhost:5174", 
+      "https://cheesuschrustyy.netlify.app", 
+      "http://72.62.26.34:4173", 
+      "https://cheescusty.netlify.app", 
+      "https://prontocorso.com"
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -43,14 +54,6 @@ async function bootstrap() {
     new JwtGuard(reflector, prisma),
     new RolesGuard(reflector),
   );
-
-  app.use('/subscriptions/webhook', (req, res, next) => {
-    bodyParser.raw({ type: 'application/json' })(req, res, (err) => {
-      if (err) return next(err);
-      req.rawBody = req.body;
-      next();
-    });
-  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -64,7 +67,10 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   setupSwagger(app);
-  await app.listen(process.env.PORT ?? 3000);
+  
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`🚀 Server running on port ${port}`);
 }
 
 bootstrap();
