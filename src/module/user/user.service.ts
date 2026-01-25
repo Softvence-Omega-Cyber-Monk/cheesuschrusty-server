@@ -49,6 +49,8 @@ async getAllStudents(
 
   const now = new Date();
 
+  // console.log(now);
+
   // Compute subscriptionPlan and trialAvailable
   let data = users.map((u) => {
     const activePro = u.subscriptions.some(
