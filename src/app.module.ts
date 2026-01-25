@@ -71,8 +71,7 @@ import { HealthController } from './module/health/health.controller';
     AnalyticsModule,
     LeaderboardModule,
     AdminDashboardMetadataModule,
-    PromptModule,
-    HealthController
+    PromptModule
   ],
   controllers: [AppController],
   providers: [AppService, SeederService,CefrConfidenceService,CloudinaryService,StreakReminderCron],
