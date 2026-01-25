@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Post,
@@ -73,32 +72,41 @@ export class SubscriptionController {
   /**
    * Lemon Squeezy webhook
    */
- @Post('webhook')
-@Public()
-async handleWebhook(@Req() req: Request, @Res() res: Response) {
-  try {
-    const signature = req.headers['x-signature'] as string;
+  @Post('webhook')
+  @Public()
+  async handleWebhook(@Req() req: Request, @Res() res: Response) {
+    try {
+      const signature = req.headers['x-signature'] as string;
 
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing signature' });
+      if (!signature) {
+        return res.status(400).json({ error: 'Missing signature' });
+      }
+
+      // Access rawBody from the verify function in main.ts
+      const rawBody = (req as any).rawBody;
+      
+      if (!rawBody) {
+        return res.status(400).json({ error: 'Missing raw body' });
+      }
+
+      // Convert Buffer to string for verification
+      const rawBodyString = rawBody.toString('utf8');
+      
+      // Parse the JSON payload
+      const payload = JSON.parse(rawBodyString);
+
+      await this.subService.handleWebhook(
+        rawBodyString,
+        signature,
+        payload,
+      );
+
+      return res.status(201).json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      return res.status(400).json({ error: error.message });
     }
-
-    const rawBody = req.body.toString('utf8');
-    const payload = JSON.parse(rawBody);
-
-    await this.subService.handleWebhook(
-      rawBody,
-      signature,
-      payload,
-    );
-
-    return res.status(201).json({ received: true });
-  } catch (error: any) {
-    console.error('Webhook error:', error.message);
-    return res.status(400).json({ error: error.message });
   }
-}
-
 
   /**
    * Get current user subscription
