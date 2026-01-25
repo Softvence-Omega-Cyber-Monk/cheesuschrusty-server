@@ -42,7 +42,6 @@ export class LessionService {
     const level: Difficulty = user.currentLevel;
     const levelString = level.toString();
 
-    // 1. Get all completed lesson IDs
     const completedSessions = await this.prisma.practiceSession.findMany({
       where: { userId, lessonId: { not: null } },
       select: { lessonId: true },
@@ -51,7 +50,6 @@ export class LessionService {
 
     const completedLessonIds = completedSessions.map((s: any) => s.lessonId!);
 
-    // 2. Find next NEW lesson
     let nextLesson = await this.prisma.lesson.findFirst({
       where: {
         skill: type,
@@ -62,9 +60,8 @@ export class LessionService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // 3. If no new lessons → find lowest accuracy for review
     if (!nextLesson) {
-      console.log(`No new lessons — finding lowest accuracy for review`);
+      console.log(`No new lessons – finding lowest accuracy for review`);
 
       const lowestAccuracySession = await this.prisma.practiceSession.findFirst({
         where: {
@@ -84,10 +81,62 @@ export class LessionService {
       }
     }
 
-    // 4. If still nothing → user has mastered everything
     if (!nextLesson) {
       throw new NotFoundException(
         `You have mastered all available ${level} ${type} content! Ready for the next level?`,
+      );
+    }
+
+    return nextLesson;
+  }
+
+  async findNextLessonByTypeAndLevel(
+    userId: string,
+    type: LessonType,
+    level: string
+  ): Promise<Lesson> {
+    const completedSessions = await this.prisma.practiceSession.findMany({
+      where: { userId, lessonId: { not: null } },
+      select: { lessonId: true },
+      distinct: ['lessonId'],
+    });
+
+    const completedLessonIds = completedSessions.map((s: any) => s.lessonId!);
+
+    let nextLesson = await this.prisma.lesson.findFirst({
+      where: {
+        skill: type,
+        level: level.toLowerCase(),
+        isPublished: true,
+        id: { notIn: completedLessonIds.length > 0 ? completedLessonIds : undefined },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!nextLesson) {
+      console.log(`No new lessons for ${type} ${level} – finding lowest accuracy for review`);
+
+      const lowestAccuracySession = await this.prisma.practiceSession.findFirst({
+        where: {
+          userId,
+          lesson: {
+            skill: type,
+            level: level.toLowerCase(),
+            isPublished: true,
+          },
+        },
+        orderBy: { accuracy: 'asc' },
+        include: { lesson: true },
+      });
+
+      if (lowestAccuracySession?.lesson) {
+        nextLesson = lowestAccuracySession.lesson;
+      }
+    }
+
+    if (!nextLesson) {
+      throw new NotFoundException(
+        `No available ${level.toUpperCase()} ${type} lessons found. Try a different level or type.`,
       );
     }
 
@@ -154,11 +203,8 @@ export class LessionService {
 
   async deleteLesson(lessonId: number): Promise<void> {
     await this.prisma.$transaction([
-      // Delete practice sessions first
       this.prisma.practiceSession.deleteMany({ where: { lessonId } }),
-      // Delete question sets
       this.prisma.questionSet.deleteMany({ where: { lessonId } }),
-      // Delete lesson
       this.prisma.lesson.delete({ where: { id: lessonId } }),
     ]);
 

@@ -14,12 +14,11 @@ import { AnalyticsService } from '../analytics/analytics.service';
 @ApiTags('Lesson Practice (User)')
 @Controller('lessons')
 export class LessonController {
-  constructor(private readonly lessonService: LessionService,
+  constructor(
+    private readonly lessonService: LessionService,
     private readonly practiceSessionService: PracticeSessionService,
     private readonly analyticsService: AnalyticsService,
   ) {}
-
-
 
   @Get('next')
   @Roles(Role.USER) 
@@ -32,12 +31,10 @@ export class LessonController {
     @Res() res: Response,
     @Query('type') type: LessonType
   ) {
-    // 1. Explicit input validation using NestJS Exceptions (fixes the previous error)
     if (!type) {
       throw new BadRequestException('Lesson type is required query parameters (e.g., ?type=READING&level=B1).');
     }
     
-    // 2. userId is guaranteed to exist by the authentication guard
     const userId = req.user!.id; 
 
     const lesson = await this.lessonService.findNextLessonForUser(
@@ -53,6 +50,39 @@ export class LessonController {
     });
   }
 
+  @Get('filter')
+  @Roles(Role.USER)
+  @ApiOperation({ summary: 'USER: Get the next lesson filtered by type and level.' })
+  @ApiQuery({ name: 'type', enum: LessonType, description: 'The type of lesson requested (e.g., READING).' })
+  @ApiQuery({ name: 'level', required: true, description: 'The proficiency level (e.g., a1, a2, b1, b2, c1, c2).' })
+  @ApiResponse({ status: 200, description: 'Returns the lesson content JSON filtered by type and level.' })
+  @ApiResponse({ status: 400, description: 'Missing required parameters.' })
+  @ApiResponse({ status: 404, description: 'No lessons available for this type/level combination.' })
+  async findLessonByTypeAndLevel(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query('type') type: LessonType,
+    @Query('level') level: string
+  ) {
+    if (!type || !level) {
+      throw new BadRequestException('Both type and level are required query parameters (e.g., ?type=READING&level=a1).');
+    }
+
+    const userId = req.user!.id;
+
+    const lesson = await this.lessonService.findNextLessonByTypeAndLevel(
+      userId,
+      type,
+      level
+    );
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Lesson retrieved successfully.',
+      data: lesson,
+    });
+  }
 
   @Post(':id/complete')
   @Roles(Role.USER)
@@ -64,18 +94,16 @@ export class LessonController {
   ) {
     const userId = req.user!.id;
 
-    // 1. Get lesson to determine skillArea
     const lesson = await this.lessonService.getSingleLesson(lessonId);
     if (!lesson) {
       return sendResponse(res, {
         statusCode: HttpStatus.NOT_FOUND,
         success: false,
         message: 'Lesson not found',
-        data:null
+        data: null
       });
     }
 
-    // Map LessonType → SkillArea
     const skillAreaMap: Record<string, SkillArea> = {
       READING: 'reading',
       LISTENING: 'listening',
@@ -85,7 +113,6 @@ export class LessonController {
 
     const skillArea = skillAreaMap[lesson.skill || 'READING'] as SkillArea;
 
-    // 2. Save via PracticeSessionService
     await this.practiceSessionService.createSession({
       userId,
       skillArea,
@@ -95,10 +122,8 @@ export class LessonController {
       xpEarned: dto.xpEarned,
     });
 
-
     await this.analyticsService.checkAndAwardBadges(userId);
 
-    // 3. Return success + feedback
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
@@ -111,6 +136,4 @@ export class LessonController {
       },
     });
   }
-
- 
 }

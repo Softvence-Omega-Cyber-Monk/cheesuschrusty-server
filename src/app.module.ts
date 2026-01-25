@@ -29,7 +29,6 @@ import { CloudinaryService } from './common/service/cloudinary/cloudinary.servic
 import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/admin-dashboard-metadata.module';
 import { StreakReminderCron } from './cron/streak-reminder.cron';
 import { PromptModule } from './module/prompt/prompt.module';
-import { HealthController } from './module/health/health.controller';
 
 
 
