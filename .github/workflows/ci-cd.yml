@@ -73,16 +73,15 @@ jobs:
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            cd /root/backend
+              cd /root/backend
 
-            # Pull latest images for the 'prod' profile
-            docker compose pull
+              export APP_VERSION=${GITHUB_SHA}
 
-            # Bring down old containers, ignore warnings
-            docker compose down --remove-orphans || true
+              docker compose pull
 
-            # Start new containers
-            docker compose up -d
+              docker compose up -d \
+                --force-recreate \
+                --remove-orphans
 
-            # Clean dangling images and networks, DO NOT remove volumes
-            docker system prune -f || true
+              docker image prune -f
+

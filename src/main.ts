@@ -15,12 +15,22 @@ async function bootstrap() {
     bodyParser: false, // Disable default body parser
   });
 
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate',
+    );
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+  });
+
   // Handle raw text for /prompts/.../raw endpoints FIRST
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.path.includes('/prompts/')) {
-      return bodyParser.text({ 
-        type: '*/*', 
-        limit: '50mb' 
+      return bodyParser.text({
+        type: '*/*',
+        limit: '50mb'
       })(req, res, next);
     }
     next();
