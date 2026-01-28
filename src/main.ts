@@ -11,13 +11,24 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bodyParser: false, 
+    bodyParser: false,
   });
 
-  app.use('/subscriptions/webhook', bodyParser.raw({ 
+  app.enableCors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://cheesuschrustyy.netlify.app",
+      "http://72.62.26.34:4173",
+      "https://cheescusty.netlify.app",
+      "https://prontocorso.com"
+    ],
+    credentials: true,
+  });
+  app.use('/subscriptions/webhook', bodyParser.raw({
     type: 'application/json',
     verify: (req: any, res, buf) => {
-      req.rawBody = buf; 
+      req.rawBody = buf;
     }
   }));
 
@@ -36,14 +47,13 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      "http://localhost:5173", 
-      "http://localhost:5174", 
-      "https://cheesuschrustyy.netlify.app", 
-      "http://72.62.26.34:4173", 
-      "https://cheescusty.netlify.app", 
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://cheesuschrustyy.netlify.app",
+      "http://72.62.26.34:4173",
+      "https://cheescusty.netlify.app",
       "https://prontocorso.com"
     ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 
@@ -67,7 +77,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   setupSwagger(app);
-  
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`🚀 Server running on port ${port}`);
