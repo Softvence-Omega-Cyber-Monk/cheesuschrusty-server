@@ -146,6 +146,7 @@ model User {
   supportTickets          SupportTicket[]
   activeFlashcardSessions ActiveFlashcardSession[] @relation("UserSessions")
   supportMessages         SupportTicketMessage[]   @relation("UserSentMessages")
+  userSettings            UserSettings?
 
   @@map("users")
 }
@@ -509,4 +510,32 @@ model SystemPrompt {
   updatedAt DateTime @updatedAt
 
   @@map("system_prompts")
+}
+
+enum ThemeMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+// Add this model
+model UserSettings {
+  id        String   @id @default(uuid())
+  userId    String?   @unique
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Display Settings
+  themeMode ThemeMode @default(SYSTEM)
+
+  // Audio Settings
+  systemVoice String?
+  voiceSpeed  Float?       @default(1.0) // 0.5 to 2.0
+
+  // Notification Settings
+  newsletterEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_settings")
 }

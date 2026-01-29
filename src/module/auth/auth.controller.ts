@@ -12,24 +12,50 @@ import {
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Request, Response } from 'express';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
-// src/auth/auth.controller.ts
-@Public()
-@Post('register')
-async register(@Body() dto: RegisterDto, @Res() res: Response) {
-  const result = await this.authService.register(dto);
-  return sendResponse(res, {
-    statusCode: HttpStatus.CREATED,
-    success: true,
-    message: 'Registration successful',
-    data: result,
-  });
-}
 
+  // ✅ Register - Now only sends verification email
+  @Public()
+  @Post('register')
+  async register(@Body() dto: RegisterDto, @Res() res: Response) {
+    const result = await this.authService.register(dto);
+    return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Registration successful. Please verify your email.',
+      data: result,
+    });
+  }
 
+  // ✅ Verify Email - New endpoint
+  @Public()
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: VerifyResetCodeDto, @Res() res: Response) {
+    const result = await this.authService.verifyEmail(dto);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Email verified successfully',
+      data: result,
+    });
+  }
+
+  // ✅ Resend Verification OTP - New endpoint
+  @Public()
+  @Post('resend-verification')
+  async resendVerification(@Body() dto: ResendVerificationDto, @Res() res: Response) {
+    const result = await this.authService.resendVerificationOtp(dto.email);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Verification code sent',
+      data: result,
+    });
+  }
 
   // login 
   @Public()
@@ -57,8 +83,6 @@ async register(@Body() dto: RegisterDto, @Res() res: Response) {
     });
   }
 
-
-  
   // change password 
   @Patch('change-password')
   async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request, @Res() res: Response) {
@@ -70,7 +94,6 @@ async register(@Body() dto: RegisterDto, @Res() res: Response) {
       data: result,
     });
   }
-
 
   // forget and reset password 
   @Public()
@@ -108,8 +131,4 @@ async register(@Body() dto: RegisterDto, @Res() res: Response) {
       data: result,
     });
   }
-
-
-
-
 }

@@ -54,34 +54,142 @@ async register(dto: RegisterDto) {
       name: dto.name,
       email: dto.email,
       password: hashedPassword,
-      emailVerified: true,
+      emailVerified: false, // ✅ Set to false initially
       role: dto.role,
       dailyGoalMinutes: dto.dailyGoalMinutes,
     },
   });
 
-  // Generate tokens
+  // Generate OTP for email verification
+  const code = generateOtpCode();
+  const hashedCode = await hashOtpCode(code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Save OTP to DB
+  await this.prisma.otpCode.create({
+    data: { email: newUser.email, code: hashedCode, expiresAt },
+  });
+
+  // Send verification email
+  const html = await this.mailTemplatesService.getEmailVerificationOtpTemplate(code, 10);
+  
+  try {
+    await this.mailerService.sendMail({
+      to: newUser.email,
+      subject: 'Verify Your Email - ProntoCorso',
+      html,
+    });
+    this.logger.log(`Verification email sent to ${newUser.email}`);
+  } catch (error) {
+    this.logger.error(`Failed to send verification email to ${newUser.email}`, error);
+    // Clean up user if email fails
+    await this.prisma.user.delete({ where: { id: newUser.id } });
+    throw new BadRequestException('Failed to send verification email. Please try again.');
+  }
+
+  return { 
+    message: 'Registration successful. Please check your email to verify your account.',
+    email: newUser.email,
+  };
+}
+
+
+// ✅ New method: Verify email with OTP
+async verifyEmail(dto: VerifyResetCodeDto) {
+  const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  if (user.emailVerified) {
+    throw new BadRequestException('Email is already verified');
+  }
+
+  // Verify OTP
+  await verifyOtp(this.prisma, dto.email, dto.code);
+
+  // Update user to verified
+  await this.prisma.user.update({
+    where: { email: dto.email },
+    data: { emailVerified: true },
+  });
+
+  // Delete used OTP codes for this email
+  await this.prisma.otpCode.deleteMany({ where: { email: dto.email } });
+
+  // Get security settings for token generation
+  const securitySettings = await this.prisma.securitySettings.findUnique({ where: { id: 1 } });
   const sessionTimeoutMs = securitySettings!.sessionTimeoutDays * 24 * 60 * 60 * 1000;
-  const tokens = await getTokens(this.jwtService, newUser.id, newUser.email, newUser.role, sessionTimeoutMs);
+
+  // Generate tokens
+  const tokens = await getTokens(this.jwtService, user.id, user.email, user.role, sessionTimeoutMs);
 
   // Send welcome email if globally enabled
   const notificationSettings = await this.notificationSettingsService.getSettings();
   if (notificationSettings!.welcomeEmailEnabled) {
     try {
       await this.mailerService.sendWelcomeEmail({
-        email: newUser.email,
-        name: newUser.name,
+        email: user.email,
+        name: user.name,
       });
-      this.logger.log(`Welcome email sent to ${newUser.email}`);
+      this.logger.log(`Welcome email sent to ${user.email}`);
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${newUser.email}`, error);
-      // Don't fail registration if email fails
+      this.logger.error(`Failed to send welcome email to ${user.email}`, error);
+      // Don't fail verification if welcome email fails
     }
   }
 
-  return { user: newUser, ...tokens };
+  return { 
+    message: 'Email verified successfully',
+    user,
+    ...tokens 
+  };
 }
 
+
+// ✅ New method: Resend verification OTP
+async resendVerificationOtp(email: string) {
+  const user = await this.prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  if (user.emailVerified) {
+    throw new BadRequestException('Email is already verified');
+  }
+
+  // Delete old OTP codes for this email
+  await this.prisma.otpCode.deleteMany({ where: { email } });
+
+  // Generate new OTP
+  const code = generateOtpCode();
+  const hashedCode = await hashOtpCode(code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Save new OTP to DB
+  await this.prisma.otpCode.create({
+    data: { email, code: hashedCode, expiresAt },
+  });
+
+  // Send verification email
+  const html = await this.mailTemplatesService.getEmailVerificationOtpTemplate(code, 10);
+  
+  try {
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Verify Your Email - ProntoCorso',
+      html,
+    });
+    this.logger.log(`Verification email resent to ${email}`);
+  } catch (error) {
+    this.logger.error(`Failed to resend verification email to ${email}`, error);
+    throw new BadRequestException('Failed to send verification email. Please try again.');
+  }
+
+  return { message: 'Verification code sent to your email' };
+}
 
 
 // login 
@@ -90,6 +198,11 @@ async login(dto: LoginDto) {
 
   if (!user || !user.password) {
     throw new ForbiddenException('Invalid credentials');
+  }
+
+  // ✅ Check if email is verified
+  if (!user.emailVerified) {
+    throw new BadRequestException('Please verify your email before logging in. Check your inbox for the verification code.');
   }
 
   if (!user.isActive) {
@@ -137,7 +250,7 @@ async login(dto: LoginDto) {
   if (user.failedLoginAttempts > 0 || user.lockedUntil) {
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null,lastLoginAt: new Date() },
+      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
     });
   }
 
@@ -161,7 +274,13 @@ async login(dto: LoginDto) {
       if(!user.isActive){
        throw new BadRequestException('User is blocked!');
       }
-      return getTokens(this.jwtService,user.id, user.email, user.role);
+      
+      // ✅ Check if email is verified
+      if (!user.emailVerified) {
+        throw new UnauthorizedException('Email not verified');
+      }
+
+      return getTokens(this.jwtService, user.id, user.email, user.role);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
