@@ -11,10 +11,11 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bodyParser: false,
+    bodyParser: false, // Disable default body parser to configure custom parsers
   });
 
-  app.enableCors({
+  // CORS Configuration
+  const corsOptions = {
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
@@ -24,7 +25,11 @@ async function bootstrap() {
       "https://prontocorso.com"
     ],
     credentials: true,
-  });
+  };
+  
+  app.enableCors(corsOptions);
+
+  // 1. Raw body parser for webhook (Stripe, etc.)
   app.use('/subscriptions/webhook', bodyParser.raw({
     type: 'application/json',
     verify: (req: any, res, buf) => {
@@ -32,31 +37,24 @@ async function bootstrap() {
     }
   }));
 
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.path.includes('/prompts/')) {
-      return bodyParser.text({
-        type: '*/*',
-        limit: '50mb'
-      })(req, res, next);
-    }
-    next();
-  });
+  // 2. Text/plain parser for prompt routes - PRESERVES ALL CHARACTERS EXACTLY
+  app.use('/prompts/master-prompt-questions', bodyParser.text({
+    type: 'text/plain',
+    limit: '50mb',
+    defaultCharset: 'utf-8'
+  }));
 
+  app.use('/prompts/master-prompt-feedback', bodyParser.text({
+    type: 'text/plain',
+    limit: '50mb',
+    defaultCharset: 'utf-8'
+  }));
+
+  // 3. Default JSON parser for all other routes
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  app.enableCors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://cheesuschrustyy.netlify.app",
-      "http://72.62.26.34:4173",
-      "https://cheescusty.netlify.app",
-      "https://prontocorso.com"
-    ],
-    credentials: true,
-  });
-
+  // Guards
   const reflector = app.get(Reflector);
   const prisma = app.get(PrismaService);
 
@@ -65,6 +63,7 @@ async function bootstrap() {
     new RolesGuard(reflector),
   );
 
+  // Validation Pipe - NOTE: skipUndefinedProperties is important
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -74,10 +73,13 @@ async function bootstrap() {
     }),
   );
 
+  // Global Exception Filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  // Swagger Setup
   setupSwagger(app);
 
+  // Start Server
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`🚀 Server running on port ${port}`);

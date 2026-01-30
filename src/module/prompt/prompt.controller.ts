@@ -1,6 +1,6 @@
 // src/prompt/prompt.controller.ts
-import { Body, Controller, Get, HttpStatus, Post, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpStatus, Post, Res, Headers } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
 import { PromptService } from './prompt.service';
 import sendResponse from '../utils/sendResponse';
@@ -13,6 +13,7 @@ export class PromptController {
 
   @Public()
   @Post('master-prompt-questions')
+  @ApiConsumes('text/plain')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Questions (Raw Text)',
     description: 'Set or update the master prompt used for generating questions. Send the complete prompt as plain text in the request body. All characters (quotes, brackets, newlines, symbols) are preserved exactly as sent. Content-Type must be text/plain.'
@@ -33,9 +34,23 @@ export class PromptController {
     }
   })
   @ApiResponse({ status: 400, description: 'Bad request - Empty or invalid prompt text' })
-  async updateMasterPromptQuestions(@Body() rawText: string, @Res() res: Response) {
+  async updateMasterPromptQuestions(
+    @Body() rawText: string, 
+    @Headers('content-type') contentType: string,
+    @Res() res: Response
+  ) {
+    // Validate Content-Type
+    if (!contentType || !contentType.includes('text/plain')) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Content-Type must be text/plain',
+        data: null,
+      });
+    }
+
     // Validate that text is not empty
-    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+    if (!rawText || typeof rawText !== 'string' || rawText.length === 0) {
       return sendResponse(res, {
         statusCode: HttpStatus.BAD_REQUEST,
         success: false,
@@ -65,6 +80,7 @@ export class PromptController {
 
   @Public()
   @Post('master-prompt-feedback')
+  @ApiConsumes('text/plain')
   @ApiOperation({ 
     summary: 'Update Master Prompt for Feedback (Raw Text)',
     description: 'Set or update the master prompt used for providing feedback. Send the complete prompt as plain text in the request body. All characters (quotes, brackets, newlines, symbols) are preserved exactly as sent. Content-Type must be text/plain.'
@@ -85,9 +101,23 @@ export class PromptController {
     }
   })
   @ApiResponse({ status: 400, description: 'Bad request - Empty or invalid prompt text' })
-  async updateMasterPromptFeedback(@Body() rawText: string, @Res() res: Response) {
+  async updateMasterPromptFeedback(
+    @Body() rawText: string, 
+    @Headers('content-type') contentType: string,
+    @Res() res: Response
+  ) {
+    // Validate Content-Type
+    if (!contentType || !contentType.includes('text/plain')) {
+      return sendResponse(res, {
+        statusCode: HttpStatus.BAD_REQUEST,
+        success: false,
+        message: 'Content-Type must be text/plain',
+        data: null,
+      });
+    }
+
     // Validate that text is not empty
-    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+    if (!rawText || typeof rawText !== 'string' || rawText.length === 0) {
       return sendResponse(res, {
         statusCode: HttpStatus.BAD_REQUEST,
         success: false,
