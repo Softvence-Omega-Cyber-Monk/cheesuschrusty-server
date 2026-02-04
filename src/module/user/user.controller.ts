@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Param, Post, Body, Patch, Delete, Req, Res, HttpStatus, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ApiTags, ApiOperation,  ApiQuery, ApiParam, ApiBody, ApiConsumes, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { Role, SubscriptionPlan } from '@prisma/client';
 import { UserService } from './user.service';
 import sendResponse from '../utils/sendResponse';
@@ -9,12 +9,13 @@ import { CreatePlatformUserDto } from './dto/create-admin.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateProfileDto } from './dto/update-user.dto';
 import { UpsertStudyPlanDto } from './dto/upsert-study-plan.dto';
+import { AdminEditUserDto } from './dto/admin-edit-user.dto';
 
 
 @ApiTags('User Management')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   // -------------------------
   // STUDENT MANAGEMENT
@@ -33,7 +34,7 @@ export class UserController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('status') status?: boolean,
-     @Query('subscription') subscription?: 'PRO' | 'FREE',
+    @Query('subscription') subscription?: 'PRO' | 'FREE',
     @Query('search') search?: string,
   ) {
     const students = await this.userService.getAllStudents(page, limit, search, status, subscription);
@@ -47,22 +48,22 @@ export class UserController {
   }
 
 
-   @Get('me')
+  @Get('me')
   async getMyProfile(@Req() req: Request, @Res() res: Response) {
-     const userId = (req.user as any).id;
+    const userId = (req.user as any).id;
 
-      const profile = await this.userService.getUserById(userId);
+    const profile = await this.userService.getUserById(userId);
 
-      return sendResponse(res, {
-        statusCode: HttpStatus.OK,
-        success: true,
-        message: 'Profile retrieved successfully',
-        data: profile,
-      });
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Profile retrieved successfully',
+      data: profile,
+    });
   }
 
 
-   @Get('metadata')
+  @Get('metadata')
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
   @ApiOperation({ summary: 'Get user metadata counts' })
   async getUserMetaData(@Res() res: Response) {
@@ -88,6 +89,32 @@ export class UserController {
     });
   }
 
+  @Patch('students/:id')
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
+  @ApiOperation({ summary: 'Admin edit user details' })
+  @ApiParam({ name: 'id', description: 'User ID to edit' })
+  @ApiBody({ type: AdminEditUserDto })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - validation error or email already exists' })
+  @ApiResponse({ status: 403, description: 'Forbidden - cannot edit admin accounts' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async adminEditUser(
+    @Res() res: Response,
+    @Param('id') id: string,
+    @Body() dto: AdminEditUserDto,
+    @Req() req: Request
+  ) {
+    const adminRole = req.user!.role as Role;
+    const updatedUser = await this.userService.adminEditUser(id, dto, adminRole);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'User updated successfully',
+      data: updatedUser,
+    });
+  }
+
   @Patch('students/:id/status')
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER)
   async toggleStudentStatus(@Res() res: Response, @Param('id') id: string) {
@@ -108,7 +135,7 @@ export class UserController {
       statusCode: HttpStatus.OK,
       success: true,
       message: result.message,
-      data:result
+      data: result
     });
   }
 
@@ -150,63 +177,63 @@ export class UserController {
 
 
 
-@Patch('profile')
-@Roles(Role.SUPER_ADMIN,Role.CONTENT_MANAGER,Role.SUPORT_MANAGER,Role.USER)
-@UseInterceptors(FileInterceptor('avatar'))
-@ApiOperation({ 
-  summary: 'Update user profile',
-  description: 'Update name, avatar, and notification preferences'
-})
-@ApiConsumes('multipart/form-data')
-@ApiBody({
-  schema: {
-    type: 'object',
-    properties: {
-      name: { type: 'string', example: 'Marco Rossi' },
-      weeklyUpdateEnabled: { 
-        type: 'boolean', 
-        example: true,
-        description: 'Receive weekly progress reports'
+  @Patch('profile')
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER, Role.USER)
+  @UseInterceptors(FileInterceptor('avatar'))
+  @ApiOperation({
+    summary: 'Update user profile',
+    description: 'Update name, avatar, and notification preferences'
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Marco Rossi' },
+        weeklyUpdateEnabled: {
+          type: 'boolean',
+          example: true,
+          description: 'Receive weekly progress reports'
+        },
+        streakRemindersEnabled: {
+          type: 'boolean',
+          example: true,
+          description: 'Get alerts to maintain your streak'
+        },
+        achievementAlertsEnabled: {
+          type: 'boolean',
+          example: true,
+          description: 'Get notified when you earn badges'
+        },
+        dailyGoalMinutes: {
+          type: 'number',
+          example: 30,
+          description: 'Daily study goal in minutes'
+        },
+        avatar: { type: 'string', format: 'binary' },
       },
-      streakRemindersEnabled: { 
-        type: 'boolean', 
-        example: true,
-        description: 'Get alerts to maintain your streak'
-      },
-      achievementAlertsEnabled: { 
-        type: 'boolean', 
-        example: true,
-        description: 'Get notified when you earn badges'
-      },
-      dailyGoalMinutes: { 
-        type: 'number',
-        example: 30,
-        description: 'Daily study goal in minutes'
-      },
-      avatar: { type: 'string', format: 'binary' },
+
     },
+  })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateProfile(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UpdateProfileDto,
+    @Res() res: Response,
+  ) {
+    const userId = req.user.id;
+    const result = await this.userService.updateProfile(userId, dto, file);
 
-  },
-})
-@ApiResponse({ status: 200, description: 'Profile updated successfully' })
-@ApiResponse({ status: 400, description: 'Bad request' })
-@ApiResponse({ status: 401, description: 'Unauthorized' })
-async updateProfile(
-  @Req() req: any,
-  @UploadedFile() file: Express.Multer.File,
-  @Body() dto: UpdateProfileDto,
-  @Res() res: Response,
-) {
-  const userId = req.user.id;
-  const result = await this.userService.updateProfile(userId, dto, file);
-
-  return sendResponse(res, {
-    statusCode: HttpStatus.OK,
-    success: true,
-    message: result.message,
-    data: result.user,
-  });
-}
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  }
 
 
 
@@ -265,5 +292,5 @@ async updateProfile(
 
 
 
-  
+
 }

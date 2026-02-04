@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
-import { Role} from '@prisma/client';
+import { Role } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { CreatePlatformUserDto } from './dto/create-admin.dto';
 import * as bcrypt from 'bcrypt';
@@ -8,173 +8,174 @@ import { CloudinaryService } from 'src/common/service/cloudinary/cloudinary.serv
 import { UpdateProfileDto } from './dto/update-user.dto';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
 import { UpsertStudyPlanDto } from './dto/upsert-study-plan.dto';
+import { AdminEditUserDto } from './dto/admin-edit-user.dto';
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
-     private cefrConfidenceService: CefrConfidenceService,
-  ) {}
- /**
-   * Get all students with optional filters, search, and pagination
-   */
-async getAllStudents(
-  page = 1,
-  limit = 20,
-  search?: string,
-  isActive?: boolean,
-  subscription?: 'PRO' | 'FREE'
-) {
-  const skip = (page - 1) * limit;
+    private cefrConfidenceService: CefrConfidenceService,
+  ) { }
+  /**
+    * Get all students with optional filters, search, and pagination
+    */
+  async getAllStudents(
+    page = 1,
+    limit = 20,
+    search?: string,
+    isActive?: boolean,
+    subscription?: 'PRO' | 'FREE'
+  ) {
+    const skip = (page - 1) * limit;
 
-  const whereClause: any = { role: 'USER' };
-  if (typeof isActive === 'boolean') whereClause.isActive = isActive;
-  if (search) {
-    whereClause.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-    ];
+    const whereClause: any = { role: 'USER' };
+    if (typeof isActive === 'boolean') whereClause.isActive = isActive;
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Fetch users from DB
+    const [total, users] = await this.prisma.$transaction([
+      this.prisma.user.count({ where: whereClause }),
+      this.prisma.user.findMany({
+        where: whereClause,
+        include: { subscriptions: true },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const now = new Date();
+
+    // console.log(now);
+
+    // Compute subscriptionPlan and trialAvailable
+    let data = users.map((u) => {
+      const activePro = u.subscriptions.some(
+        (s) =>
+          s.plan === 'PRO' &&
+          s.status !== 'canceled' &&
+          new Date(s.currentPeriodEnd) > now
+      );
+
+      return {
+        id: u.id,
+        email: u.email,
+        emailVerified: u.emailVerified,
+        name: u.name,
+        avatar: u.avatar,
+        isActive: u.isActive,
+        hasUsedTrial: u.hasUsedTrial,
+        role: u.role,
+        nativeLang: u.nativeLang,
+        targetLang: u.targetLang,
+        currentLevel: u.currentLevel,
+        xp: u.xp,
+        currentStreak: u.currentStreak,
+        longestStreak: u.longestStreak,
+        lastPracticeDate: u.lastPracticeDate,
+        totalMinutesStudied: u.totalMinutesStudied,
+        wordsLearned: u.wordsLearned,
+        lessonsCompleted: u.lessonsCompleted,
+        dailyGoalMinutes: u.dailyGoalMinutes,
+        timezone: u.timezone,
+        stripeCustomerId: u.lemonCustomerId,
+        subscriptions: u.subscriptions || [],
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        subscriptionPlan: activePro ? 'PRO' : 'FREE',
+        trialAvailable: !u.hasUsedTrial && !activePro,
+      };
+    });
+
+    // Filter by subscription if provided
+    if (subscription) {
+      data = data.filter((u) => u.subscriptionPlan === subscription);
+    }
+
+    return {
+      data,
+      meta: {
+        total: data.length,
+        page,
+        limit,
+        totalPages: Math.ceil(data.length / limit),
+      },
+    };
   }
 
-  // Fetch users from DB
-  const [total, users] = await this.prisma.$transaction([
-    this.prisma.user.count({ where: whereClause }),
-    this.prisma.user.findMany({
-      where: whereClause,
+
+  /**
+   * Get a single user by ID
+   */
+  /**
+   * Get a single user by ID — with real CEFR progress via service
+   */
+  async getUserById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
       include: { subscriptions: true },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    }),
-  ]);
+    });
 
-  const now = new Date();
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-  // console.log(now);
-
-  // Compute subscriptionPlan and trialAvailable
-  let data = users.map((u) => {
-    const activePro = u.subscriptions.some(
+    const now = new Date();
+    const activePro = user.subscriptions.some(
       (s) =>
         s.plan === 'PRO' &&
         s.status !== 'canceled' &&
         new Date(s.currentPeriodEnd) > now
     );
 
+    // Use the existing service for CEFR progress
+    const cefrProgress = await this.cefrConfidenceService.getUserProgress(userId);
+
     return {
-      id: u.id,
-      email: u.email,
-      emailVerified: u.emailVerified,
-      name: u.name,
-      avatar: u.avatar,
-      isActive: u.isActive,
-      hasUsedTrial: u.hasUsedTrial,
-      role: u.role,
-      nativeLang: u.nativeLang,
-      targetLang: u.targetLang,
-      currentLevel: u.currentLevel,
-      xp: u.xp,
-      currentStreak: u.currentStreak,
-      longestStreak: u.longestStreak,
-      lastPracticeDate: u.lastPracticeDate,
-      totalMinutesStudied: u.totalMinutesStudied,
-      wordsLearned: u.wordsLearned,
-      lessonsCompleted: u.lessonsCompleted,
-      dailyGoalMinutes: u.dailyGoalMinutes,
-      timezone: u.timezone,
-      stripeCustomerId: u.lemonCustomerId,
-      subscriptions: u.subscriptions || [],
-      createdAt: u.createdAt,
-      updatedAt: u.updatedAt,
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      name: user.name?.trim() || '(No name)',
+      avatar: user.avatar,
+      isActive: user.isActive,
+      hasUsedTrial: user.hasUsedTrial,
+      role: user.role,
+      nativeLang: user.nativeLang,
+      targetLang: user.targetLang,
+      currentLevel: user.currentLevel,
+      xp: user.xp,
+      currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
+      lastPracticeDate: user.lastPracticeDate,
+      totalMinutesStudied: user.totalMinutesStudied,
+      wordsLearned: user.wordsLearned,
+      lessonsCompleted: user.lessonsCompleted,
+      dailyGoalMinutes: user.dailyGoalMinutes,
+      timezone: user.timezone,
+      stripeCustomerId: user.lemonCustomerId,
+      subscriptions: user.subscriptions || [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      weeklyUpdateEnabled: user.weeklyUpdateEnabled,
+      streakRemindersEnabled: user.streakRemindersEnabled,
+      achievementAlertsEnabled: user.achievementAlertsEnabled,
+
+
+      // Computed
       subscriptionPlan: activePro ? 'PRO' : 'FREE',
-      trialAvailable: !u.hasUsedTrial && !activePro,
+      trialAvailable: !user.hasUsedTrial && !activePro,
+
+      // Real CEFR from service (no hardcoded fallback!)
+      cefrSkills: {
+        reading: cefrProgress.skills.find(s => s.skillArea === 'reading'),
+        listening: cefrProgress.skills.find(s => s.skillArea === 'listening'),
+        writing: cefrProgress.skills.find(s => s.skillArea === 'writing'),
+        speaking: cefrProgress.skills.find(s => s.skillArea === 'speaking'),
+      },
     };
-  });
-
-  // Filter by subscription if provided
-  if (subscription) {
-    data = data.filter((u) => u.subscriptionPlan === subscription);
   }
-
-  return {
-    data,
-    meta: {
-      total: data.length,
-      page,
-      limit,
-      totalPages: Math.ceil(data.length / limit),
-    },
-  };
-}
-
-
-/**
- * Get a single user by ID
- */
-/**
- * Get a single user by ID — with real CEFR progress via service
- */
-async getUserById(userId: string) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    include: { subscriptions: true },
-  });
-
-  if (!user) throw new NotFoundException(`User ${userId} not found`);
-
-  const now = new Date();
-  const activePro = user.subscriptions.some(
-    (s) =>
-      s.plan === 'PRO' &&
-      s.status !== 'canceled' &&
-      new Date(s.currentPeriodEnd) > now
-  );
-
-  // Use the existing service for CEFR progress
-  const cefrProgress = await this.cefrConfidenceService.getUserProgress(userId);
-
-  return {
-    id: user.id,
-    email: user.email,
-    emailVerified: user.emailVerified,
-    name: user.name?.trim() || '(No name)',
-    avatar: user.avatar,
-    isActive: user.isActive,
-    hasUsedTrial: user.hasUsedTrial,
-    role: user.role,
-    nativeLang: user.nativeLang,
-    targetLang: user.targetLang,
-    currentLevel: user.currentLevel,
-    xp: user.xp,
-    currentStreak: user.currentStreak,
-    longestStreak: user.longestStreak,
-    lastPracticeDate: user.lastPracticeDate,
-    totalMinutesStudied: user.totalMinutesStudied,
-    wordsLearned: user.wordsLearned,
-    lessonsCompleted: user.lessonsCompleted,
-    dailyGoalMinutes: user.dailyGoalMinutes,
-    timezone: user.timezone,
-    stripeCustomerId: user.lemonCustomerId,
-    subscriptions: user.subscriptions || [],
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-    weeklyUpdateEnabled:user.weeklyUpdateEnabled,
-  streakRemindersEnabled:user.streakRemindersEnabled,
-  achievementAlertsEnabled :user.achievementAlertsEnabled,
-    
-
-    // Computed
-    subscriptionPlan: activePro ? 'PRO' : 'FREE',
-    trialAvailable: !user.hasUsedTrial && !activePro,
-
-    // Real CEFR from service (no hardcoded fallback!)
-    cefrSkills: {
-      reading: cefrProgress.skills.find(s => s.skillArea === 'reading'),
-      listening: cefrProgress.skills.find(s => s.skillArea === 'listening'),
-      writing: cefrProgress.skills.find(s => s.skillArea === 'writing'),
-      speaking: cefrProgress.skills.find(s => s.skillArea === 'speaking'),
-    },
-  };
-}
   /**
    * Suspend or activate a user
    */
@@ -240,29 +241,29 @@ async getUserById(userId: string) {
   /**
    * Create a new platform user (content manager / support manager)
    */
-async createPlatformUser(dto: CreatePlatformUserDto) {
-  if (![Role.CONTENT_MANAGER, Role.SUPORT_MANAGER].includes(dto.role)) {
-    throw new ForbiddenException('Invalid role for platform user');
+  async createPlatformUser(dto: CreatePlatformUserDto) {
+    if (![Role.CONTENT_MANAGER, Role.SUPORT_MANAGER].includes(dto.role)) {
+      throw new ForbiddenException('Invalid role for platform user');
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      dto.password,
+      parseInt(process.env.SALT_ROUND!)
+    );
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        name: dto.name,
+        role: dto.role,
+        password: hashedPassword,
+        emailVerified: true,
+        isActive: true,
+      },
+    });
+
+    return user;
   }
-
-  const hashedPassword = await bcrypt.hash(
-    dto.password,
-    parseInt(process.env.SALT_ROUND!)
-  );
-
-  const user = await this.prisma.user.create({
-    data: { 
-      email: dto.email, 
-      name: dto.name, 
-      role: dto.role, 
-      password: hashedPassword,
-      emailVerified: true,
-      isActive: true,
-    },
-  });
-
-  return user;
-}
 
 
 
@@ -297,7 +298,7 @@ async createPlatformUser(dto: CreatePlatformUserDto) {
 
 
 
-async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer.File) {
+  async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer.File) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -321,26 +322,26 @@ async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer
     // Update user
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-   data: {
-  name: dto.name,
-  avatar: avatarUrl,
-  weeklyUpdateEnabled: dto.weeklyUpdateEnabled,
-  streakRemindersEnabled: dto.streakRemindersEnabled,
-  achievementAlertsEnabled: dto.achievementAlertsEnabled,
-   dailyGoalMinutes: dto.dailyGoalMinutes,
-},
+      data: {
+        name: dto.name,
+        avatar: avatarUrl,
+        weeklyUpdateEnabled: dto.weeklyUpdateEnabled,
+        streakRemindersEnabled: dto.streakRemindersEnabled,
+        achievementAlertsEnabled: dto.achievementAlertsEnabled,
+        dailyGoalMinutes: dto.dailyGoalMinutes,
+      },
 
-// In select
-select: {
-  id: true,
-  name: true,
-  email: true,
-  avatar: true,
-  weeklyUpdateEnabled: true,
-  streakRemindersEnabled: true,
-  achievementAlertsEnabled: true,
-  dailyGoalMinutes: true, 
-},
+      // In select
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        weeklyUpdateEnabled: true,
+        streakRemindersEnabled: true,
+        achievementAlertsEnabled: true,
+        dailyGoalMinutes: true,
+      },
     });
 
     return {
@@ -350,7 +351,7 @@ select: {
     };
   }
 
-async upsertStudyPlan(userId: string, dto: UpsertStudyPlanDto) {
+  async upsertStudyPlan(userId: string, dto: UpsertStudyPlanDto) {
     return this.prisma.studyPlan.upsert({
       where: {
         userId, // unique
@@ -387,7 +388,106 @@ async upsertStudyPlan(userId: string, dto: UpsertStudyPlanDto) {
 
     return plan;
   }
+  /**
+   * Admin edit user details
+   * Only accessible by SUPER_ADMIN, CONTENT_MANAGER, SUPORT_MANAGER
+   */
+  async adminEditUser(userId: string, dto: AdminEditUserDto, _adminRole: Role) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
 
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    // Only allow editing USER role accounts
+    if (user.role !== Role.USER) {
+      throw new ForbiddenException('Cannot edit platform admin accounts');
+    }
+
+    // If email is being changed, check it's not already taken
+    if (dto.email && dto.email !== user.email) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: dto.email }
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    // Build update data object with only provided fields
+    const updateData: Prisma.UserUpdateInput = {};
+
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+    if (dto.nativeLang !== undefined) updateData.nativeLang = dto.nativeLang;
+    if (dto.targetLang !== undefined) updateData.targetLang = dto.targetLang;
+    if (dto.currentLevel !== undefined) updateData.currentLevel = dto.currentLevel;
+    if (dto.xp !== undefined) updateData.xp = dto.xp;
+    if (dto.currentStreak !== undefined) updateData.currentStreak = dto.currentStreak;
+    if (dto.longestStreak !== undefined) updateData.longestStreak = dto.longestStreak;
+    if (dto.totalMinutesStudied !== undefined) updateData.totalMinutesStudied = dto.totalMinutesStudied;
+    if (dto.wordsLearned !== undefined) updateData.wordsLearned = dto.wordsLearned;
+    if (dto.lessonsCompleted !== undefined) updateData.lessonsCompleted = dto.lessonsCompleted;
+    if (dto.dailyGoalMinutes !== undefined) updateData.dailyGoalMinutes = dto.dailyGoalMinutes;
+    if (dto.timezone !== undefined) updateData.timezone = dto.timezone;
+    if (dto.weeklyUpdateEnabled !== undefined) updateData.weeklyUpdateEnabled = dto.weeklyUpdateEnabled;
+    if (dto.streakRemindersEnabled !== undefined) updateData.streakRemindersEnabled = dto.streakRemindersEnabled;
+    if (dto.achievementAlertsEnabled !== undefined) updateData.achievementAlertsEnabled = dto.achievementAlertsEnabled;
+    if (dto.hasUsedTrial !== undefined) updateData.hasUsedTrial = dto.hasUsedTrial;
+
+    // Update user
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: { subscriptions: true },
+    });
+
+    // Calculate subscription status
+    const now = new Date();
+    const activePro = updatedUser.subscriptions.some(
+      (s) =>
+        s.plan === 'PRO' &&
+        s.status !== 'canceled' &&
+        new Date(s.currentPeriodEnd) > now
+    );
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      emailVerified: updatedUser.emailVerified,
+      name: updatedUser.name,
+      avatar: updatedUser.avatar,
+      isActive: updatedUser.isActive,
+      hasUsedTrial: updatedUser.hasUsedTrial,
+      role: updatedUser.role,
+      nativeLang: updatedUser.nativeLang,
+      targetLang: updatedUser.targetLang,
+      currentLevel: updatedUser.currentLevel,
+      xp: updatedUser.xp,
+      currentStreak: updatedUser.currentStreak,
+      longestStreak: updatedUser.longestStreak,
+      lastPracticeDate: updatedUser.lastPracticeDate,
+      totalMinutesStudied: updatedUser.totalMinutesStudied,
+      wordsLearned: updatedUser.wordsLearned,
+      lessonsCompleted: updatedUser.lessonsCompleted,
+      dailyGoalMinutes: updatedUser.dailyGoalMinutes,
+      timezone: updatedUser.timezone,
+      weeklyUpdateEnabled: updatedUser.weeklyUpdateEnabled,
+      streakRemindersEnabled: updatedUser.streakRemindersEnabled,
+      achievementAlertsEnabled: updatedUser.achievementAlertsEnabled,
+      stripeCustomerId: updatedUser.lemonCustomerId,
+      subscriptions: updatedUser.subscriptions || [],
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+      subscriptionPlan: activePro ? 'PRO' : 'FREE',
+      trialAvailable: !updatedUser.hasUsedTrial && !activePro,
+    };
+  }
 
 
 }
