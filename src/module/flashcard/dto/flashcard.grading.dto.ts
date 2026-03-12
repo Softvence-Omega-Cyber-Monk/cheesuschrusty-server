@@ -1,0 +1,90 @@
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsInt,
+  Min,
+  Max,
+  IsUUID,
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+} from 'class-validator';
+
+/**
+ * DTO for the payload when a user submits a grade for a card review.
+ */
+export class GradeCardDto {
+  @ApiProperty({
+    description: 'The unique ID of the active study session.',
+    example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+  })
+  @IsUUID()
+  sessionId: string;
+
+  @ApiProperty({
+    description: 'The unique ID of the card being graded.',
+    example: 42,
+    type: Number,
+  })
+  @IsInt()
+  @Min(1)
+  cardId: number;
+
+  @ApiProperty({
+    description:
+      'The grade given by the user based on recall quality (SM-2 algorithm).',
+    example: 3,
+    minimum: 0,
+    maximum: 3,
+    type: Number,
+  })
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  grade: number; // 0=Forgot, 1=Unsure, 2=Good, 3=Perfect
+
+  // ... existing fields
+  @ApiProperty({
+    description:
+      'Current timer value in seconds (REQUIRED only on the LAST card of the session)',
+    example: 450,
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  currentTimeSeconds?: number;
+}
+
+/**
+ * DTO for starting or resuming a flashcard session.
+ */
+export class StartSessionDto {
+  @ApiProperty({
+    description:
+      'The ID of the flashcard category (e.g., Basic Vocabulary) to study.',
+    example: 5,
+    type: Number,
+  })
+  @IsInt()
+  @Min(1)
+  categoryId: number;
+}
+
+export class PauseSessionDto {
+  @ApiProperty({
+    description: 'The ID of the session being paused',
+    example: '16c6a57f-d1e4-4e1d-8638-9d44028e7a4e',
+  })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @ApiProperty({
+    description: 'Current timer value (in seconds) sent from the frontend',
+    example: 127,
+  })
+  @IsNumber()
+  @Min(0)
+  currentTimeSeconds: number;
+}

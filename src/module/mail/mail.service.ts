@@ -1,0 +1,357 @@
+import { Injectable } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
+
+@Injectable()
+export class MailService {
+  private transporter: nodemailer.Transporter;
+
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT), // 587
+      secure: false, // STARTTLS for 587
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  async sendMail(options: {
+    to: string | string[];
+    subject: string;
+    html: string;
+    from?: string;
+    attachments?: nodemailer.Attachment[]; // 👈 RE-ADDED for image embedding
+  }) {
+    // Destructure attachments again
+    const { to, subject, html, from, attachments } = options;
+    const senderAddress = from || `ProntoCorso<${process.env.SMTP_USER}>`;
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: senderAddress,
+        to,
+        subject,
+        html,
+        attachments, // 👈 Included in the send call
+      });
+      console.log('Email sent:', info.messageId);
+      return info;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      throw error;
+    }
+  }
+
+  private getFrom() {
+    return `ProntoCorso <${process.env.SMTP_USER}>`;
+  }
+
+  async sendWelcomeEmail(user: { email: string; name?: string | null }) {
+    const name = user.name?.trim() || 'Learner';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Welcome to ProntoCorso!</title>
+        <style>
+          body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+          .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .header { background: #003213; color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; color: #333; }
+          .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+          .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Ciao ${name}! 🇮🇹</h1>
+          </div>
+          <div class="content">
+            <h2>Welcome to ProntoCorso!</h2>
+            <p>You're now on your journey to mastering Italian for citizenship.</p>
+            <p>Complete your first lesson today and start your streak! 🔥</p>
+            <a href="${process.env.CLIENT_URL}" class="btn">Start Learning Now</a>
+            <p>InshaAllah, you'll reach B1 soon!</p>
+            <br>
+            <p>The ProntoCorso Team</p>
+          </div>
+          <div class="footer">
+            © 2025 ProntoCorso. All rights reserved.<br>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.transporter.sendMail({
+      from: this.getFrom(),
+      to: user.email,
+      subject: 'Welcome to ProntoCorso! 🇮🇹',
+      html,
+    });
+  }
+
+  // In MailService
+  async sendAchievementEmail(
+    user: { email: string; name?: string | null },
+    badge: { title: string; icon: string; description: string },
+  ) {
+    const name = user.name?.trim() || 'Learner';
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Congratulations! New Badge Earned 🎉</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #003213; color: white; padding: 30px; text-align: center; }
+        .badge-icon { font-size: 60px; margin: 20px 0; }
+        .content { padding: 30px; color: #333; text-align: center; }
+        .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Congratulations, ${name}! 🎉</h1>
+        </div>
+        <div class="content">
+          <div class="badge-icon">${badge.icon}</div>
+          <h2>You earned a new badge!</h2>
+          <h3>${badge.title}</h3>
+          <p>${badge.description}</p>
+          <p>Keep practicing — B1 citizenship is getting closer InshaAllah!</p>
+          <a href="${process.env.CLIENT_URL}/user" class="btn">Continue Learning</a>
+        </div>
+        <div class="footer">
+          © 2025 ProntoCorso. All rights reserved.<br>
+          <a href="${process.env.CLIENT_URL}/user/settings">Manage Notifications</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    await this.transporter.sendMail({
+      from: this.getFrom(),
+      to: user.email,
+      subject: `New Badge: ${badge.title} 🎉`,
+      html,
+    });
+  }
+
+  // In MailService
+  async sendStreakReminderEmail(
+    user: { email: string; name?: string | null },
+    currentStreak: number,
+  ) {
+    const name = user.name?.trim() || 'Learner';
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Don't Break Your Streak! 🔥</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #003213; color: white; padding: 30px; text-align: center; }
+        .streak { font-size: 48px; margin: 10px 0; }
+        .content { padding: 30px; color: #333; text-align: center; }
+        .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Hey ${name}! 👋</h1>
+        </div>
+        <div class="content">
+          <div class="streak">🔥 ${currentStreak} day streak</div>
+          <h2>Don't break it today!</h2>
+          <p>Just a quick practice session will keep your streak alive and bring you closer to B1.</p>
+          <p>InshaAllah, you'll reach your goal soon!</p>
+          <a href="${process.env.CLIENT_URL}/user" class="btn">Practice Now</a>
+          <br><br>
+          <small>You can disable reminders in Settings → Notifications</small>
+        </div>
+        <div class="footer">
+          © 2025 B1 Italian. All rights reserved.<br>
+          <a href="${process.env.CLIENT_URL}/user/settings">Manage Notifications</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    await this.transporter.sendMail({
+      from: this.getFrom(),
+      to: user.email,
+      subject: `Keep your ${currentStreak}-day streak alive! 🔥`,
+      html,
+    });
+  }
+
+  // In MailService (add this method)
+  async sendSupportTicketAlert(
+    admins: { email: string; name?: string | null }[],
+    ticket: {
+      id: string;
+      subject: string;
+      user: { name?: string | null; email: string };
+    },
+    firstMessage: string,
+  ) {
+    const adminEmails = admins.map((a) => a.email);
+
+    if (adminEmails.length === 0) return;
+
+    const userName = ticket.user.name?.trim() || 'User';
+    const shortMessage =
+      firstMessage.length > 150
+        ? firstMessage.substring(0, 150) + '...'
+        : firstMessage;
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>New Support Ticket Received</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
+        .container { max-width: 700px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #d32f2f; color: white; padding: 25px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { padding: 30px; color: #333; line-height: 1.6; }
+        .ticket-info { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .message { background: #fff8e1; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px; margin: 20px 0; font-style: italic; }
+        .btn { display: inline-block; background: #003213; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+        .footer { background: #f0f0f0; padding: 20px; text-align: center; font-size: 14px; color: #666; border-radius: 0 0 12px 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Support Ticket</h1>
+        </div>
+        <div class="content">
+          <p><strong>Ticket ID:</strong> ${ticket.id}</p>
+          <p><strong>From:</strong> ${userName} (${ticket.user.email})</p>
+          <p><strong>Subject:</strong> ${ticket.subject}</p>
+
+          <div class="ticket-info">
+            <strong>Initial Message:</strong>
+            <div class="message">${shortMessage}</div>
+          </div>
+
+          <a href="${process.env.CLIENT_URL}/admin/support" class="btn">View Ticket in Admin Panel</a>
+
+          <p>Please respond as soon as possible.</p>
+        </div>
+        <div class="footer">
+          © 2025 ProntoCorso • Support Notification<br>
+          You can disable these alerts in Admin → Notification Settings
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    await this.transporter.sendMail({
+      from: this.getFrom(),
+      to: adminEmails,
+      subject: `[Support] New Ticket: ${ticket.subject}`,
+      html,
+    });
+  }
+
+  async sendSupportChatEscalation(
+    recipients: string[],
+    payload: {
+      username?: string | null;
+      email: string;
+      question: string;
+      ticketId: string;
+    },
+  ) {
+    if (recipients.length === 0) return;
+
+    const displayName = payload.username?.trim() || 'Unknown User';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Unresolved Chat Question</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; background: #f6f7f9; padding: 24px; color: #222;">
+        <div style="max-width: 680px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 24px;">
+          <h2 style="margin-top: 0;">Unresolved Chat Question</h2>
+          <p><strong>Ticket ID:</strong> ${payload.ticketId}</p>
+          <p><strong>Username:</strong> ${displayName}</p>
+          <p><strong>User Email:</strong> ${payload.email}</p>
+          <p><strong>Question:</strong></p>
+          <div style="white-space: pre-wrap; background: #f3f4f6; border-radius: 8px; padding: 16px;">${payload.question}</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendMail({
+      to: recipients,
+      subject: `[Support Chat] Unresolved question from ${displayName}`,
+      html,
+    });
+  }
+
+  async sendSupportChatReply(
+    user: { email: string; username?: string | null },
+    payload: {
+      ticketId: string;
+      question: string;
+      reply: string;
+    },
+  ) {
+    const displayName = user.username?.trim() || 'Learner';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reply to Your Support Question</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; background: #f6f7f9; padding: 24px; color: #222;">
+        <div style="max-width: 680px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 24px;">
+          <h2 style="margin-top: 0;">Reply to Your Support Question</h2>
+          <p>Hello ${displayName},</p>
+          <p>Our team replied to your unresolved question.</p>
+          <p><strong>Ticket ID:</strong> ${payload.ticketId}</p>
+          <p><strong>Your Question:</strong></p>
+          <div style="white-space: pre-wrap; background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 16px;">${payload.question}</div>
+          <p><strong>Reply:</strong></p>
+          <div style="white-space: pre-wrap; background: #ecfdf3; border-radius: 8px; padding: 16px;">${payload.reply}</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendMail({
+      to: user.email,
+      subject: `Reply to your support question (${payload.ticketId})`,
+      html,
+    });
+  }
+}

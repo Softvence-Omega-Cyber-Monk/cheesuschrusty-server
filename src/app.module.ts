@@ -1,0 +1,89 @@
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PrismaModule } from './common/service/prisma/prisma.module';
+import { AuthModule } from './module/auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import { UserModule } from './module/user/user.module';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { SeederService } from './seeder/seeder.service';
+import { MailModule } from './module/mail/mail.module';
+import { LessionModule } from './module/lession/lession.module';
+import { SeederModule } from './seeder/seeder.module';
+import { SubscriptionPlanModule } from './module/subscription-plan/subscription-plan.module';
+import { SubscriptionModule } from './module/subscription/subscription.module';
+import { QuestionSetModule } from './module/question-set/question-set.module';
+import { FlashcardModule } from './module/flashcard/flashcard.module';
+import { TicketModule } from './module/ticket/ticket.module';
+import { SettingsModule } from './module/settings/settings.module';
+import { BrandingSettingsModule } from './module/branding-settings/branding-settings.module';
+import { SecuritySettingsModule } from './module/security-settings/security-settings.module';
+import { PlatformSettingsModule } from './module/platform-settings/platform-settings.module';
+import { NotificationSettingsModule } from './module/notification-settings/notification-settings.module';
+import { PracticeSessionModule } from './module/practice-session/practice-session.module';
+import { CefrConfidenceService } from './common/service/cefr/cefr-confidence.service';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AnalyticsModule } from './module/analytics/analytics.module';
+import { LeaderboardModule } from './module/leaderboard/leaderboard.module';
+import { CloudinaryService } from './common/service/cloudinary/cloudinary.service';
+import { AdminDashboardMetadataModule } from './module/admin-dashboard-metadata/admin-dashboard-metadata.module';
+import { StreakReminderCron } from './cron/streak-reminder.cron';
+import { PromptModule } from './module/prompt/prompt.module';
+import { UserSettingsModule } from './module/user-settings/user-settings.module';
+import { SupportChatModule } from './module/support-chat/support-chat.module';
+import { IntegrationManagementModule } from './module/integration-management/integration-management.module';
+import { FaqManagementModule } from './module/faq-management/faq-management.module';
+
+@Module({
+  imports: [
+    MailerModule.forRoot({
+      transport: {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      },
+      defaults: {
+        from: process.env.EMAIL_USER,
+      },
+    }),
+    ScheduleModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    AuthModule,
+    UserModule,
+    MailModule,
+    LessionModule,
+    SeederModule,
+    SubscriptionPlanModule,
+    SubscriptionModule,
+    QuestionSetModule,
+    FlashcardModule,
+    TicketModule,
+    UserModule,
+    SettingsModule,
+    BrandingSettingsModule,
+    SecuritySettingsModule,
+    PlatformSettingsModule,
+    NotificationSettingsModule,
+    PracticeSessionModule,
+    AnalyticsModule,
+    LeaderboardModule,
+    AdminDashboardMetadataModule,
+    PromptModule,
+    UserSettingsModule,
+    SupportChatModule,
+    IntegrationManagementModule,
+    FaqManagementModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    SeederService,
+    CefrConfidenceService,
+    CloudinaryService,
+    StreakReminderCron,
+  ],
+})
+export class AppModule {}
