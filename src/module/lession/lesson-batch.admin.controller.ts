@@ -22,7 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { CreateLessonContainerDto } from './dto/create-lesson.dto';
+import { CreateLessonBatchDto } from './dto/create-lesson-batch.dto';
 import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { LessionService } from './lession.service';
@@ -44,19 +44,19 @@ export class LessonBatchAdminController {
 
   @Post()
   @ApiOperation({ summary: 'Create the lesson batch container' })
-  @ApiBody({ type: CreateLessonContainerDto })
+  @ApiBody({ type: CreateLessonBatchDto })
   @ApiResponse({ status: 201, description: 'Lesson batch created successfully.' })
   async createLessonBatch(
-    @Body() dto: CreateLessonContainerDto,
+    @Body() dto: CreateLessonBatchDto,
     @Res() res: Response,
   ) {
-    const newLessonBatch = await this.lessonService.createLessonContainer(dto);
+    const newLessonBatch = await this.lessonService.createLessonBatch(dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Lesson batch created and published successfully.',
-      data: newLessonBatch,
+      data: this.lessonService.toBatchAdminLessonResponse(newLessonBatch),
     });
   }
 
@@ -79,7 +79,7 @@ export class LessonBatchAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lesson batches retrieved successfully.',
-      data: lessonsData,
+      data: this.lessonService.toBatchAdminLessonListResponse(lessonsData),
     });
   }
 
@@ -99,7 +99,7 @@ export class LessonBatchAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lesson batch details retrieved successfully.',
-      data: lesson,
+      data: this.lessonService.toBatchAdminLessonResponse(lesson),
     });
   }
 
@@ -126,7 +126,7 @@ export class LessonBatchAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lesson batch status updated successfully.',
-      data: updatedLesson,
+      data: this.lessonService.toBatchAdminLessonResponse(updatedLesson),
     });
   }
 

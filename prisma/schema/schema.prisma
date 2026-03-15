@@ -223,14 +223,21 @@ model UserBadge {
 // LESSONS
 // ------------------------
 model Lesson {
-  id          Int         @id @default(autoincrement())
-  task_id     String?
-  skill       LessonType?
-  provider    AIProvider?
-  domain      String?
-  level       String?
-  isPublished Boolean     @default(false)
-  createdAt   DateTime    @default(now())
+  id              Int         @id @default(autoincrement())
+  task_id         String?
+  skill           LessonType?
+  provider        AIProvider?
+  domain          String?
+  level           String?
+  difficulty      String?
+  variant_count   Int         @default(1)
+  section_total   Int         @default(0)
+  task_time       Int         @default(0)
+  native_language String?
+  test_mode       String?
+  lesson_title    String      @default("Auto")
+  isPublished     Boolean     @default(false)
+  createdAt       DateTime    @default(now())
   target_language String?
 
   questionSets     QuestionSet[]

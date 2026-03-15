@@ -1,0 +1,2 @@
+ALTER TABLE "lessons"
+ADD COLUMN "variant_count" INTEGER NOT NULL DEFAULT 1;

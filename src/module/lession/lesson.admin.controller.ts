@@ -61,7 +61,7 @@ export class LessonAdminController {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Lesson created and published successfully.',
-      data: newLesson,
+      data: this.lessonService.toAdminLessonResponse(newLesson),
     });
   }
 
@@ -85,7 +85,7 @@ export class LessonAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lessons retrieved successfully.',
-      data: lessonsData,
+      data: this.lessonService.toAdminLessonListResponse(lessonsData),
     });
   }
 
@@ -104,7 +104,7 @@ export class LessonAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lesson details retrieved successfully.',
-      data: lesson,
+      data: this.lessonService.toAdminLessonResponse(lesson),
     });
   }
 
@@ -133,7 +133,7 @@ export class LessonAdminController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Lesson status updated successfully.',
-      data: updatedLesson,
+      data: this.lessonService.toAdminLessonResponse(updatedLesson),
     });
   }
 

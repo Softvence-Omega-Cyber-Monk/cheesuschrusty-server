@@ -1,48 +1,14 @@
-import { IsString, IsNotEmpty, IsIn } from 'class-validator';
-import { LessonType, Difficulty, AIProvider } from '@prisma/client';
+import { IsString, IsNotEmpty, IsIn, IsInt } from 'class-validator';
+import { LessonType, AIProvider } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 const lessonTypes = Object.values(LessonType);
-// const difficultyLevels = Object.values(Difficulty);
 const aiProviders = Object.values(AIProvider);
 
-/**
- * DTO used for the first step of lesson creation: defining the parent container.
- * This sets the metadata (Title, Type, Difficulty, Provider) for the entire lesson.
- */
 export class CreateLessonContainerDto {
   @ApiProperty({
-    description: 'Task ID',
-    example: 'L-01',
-  })
-  @IsNotEmpty()
-  @IsString()
-  task_id: string;
-
-  @ApiProperty({
-    description:
-      'The type of lesson being created (e.g., SPEAKING, LISTENING).',
-    enum: lessonTypes,
-    example: LessonType.LISTENING,
-  })
-  @IsNotEmpty()
-  @IsString()
-  @IsIn(lessonTypes)
-  skill: LessonType;
-
-  // @ApiProperty({
-  //   description: 'The proficiency level this lesson is targeted at.',
-  //   enum: difficultyLevels,
-  //   example: Difficulty.B1,
-  // })
-  // @IsNotEmpty()
-  // @IsString()
-  // @IsIn(difficultyLevels)
-  // difficulty: Difficulty;
-
-  @ApiProperty({
-    description:
-      'The AI provider chosen by the admin for generating this content.',
+    description: 'The AI provider used for the lesson.',
     enum: aiProviders,
     example: AIProvider.OPENAI,
   })
@@ -52,26 +18,92 @@ export class CreateLessonContainerDto {
   provider: AIProvider;
 
   @ApiProperty({
-    description: 'Level',
-    example: 'a1',
+    description: 'Level identifier for the lesson.',
+    example: 'A1',
   })
   @IsNotEmpty()
   @IsString()
-  level: string;
+  LEVEL_ID: string;
 
   @ApiProperty({
-    description: 'Domain',
-    example: 'Auto',
+    description: 'Target language for the lesson.',
+    example: 'Italian',
   })
   @IsNotEmpty()
   @IsString()
-  domain: string;
+  TARGET_LANGUAGE: string;
 
   @ApiProperty({
-    description: 'Task ID',
+    description: 'Lesson skill type.',
+    enum: lessonTypes,
+    example: LessonType.LISTENING,
+  })
+  @IsNotEmpty()
+  @IsString()
+  @IsIn(lessonTypes)
+  SKILL: LessonType;
+
+  @ApiProperty({
+    description: 'Task identifier.',
     example: 'L-01',
   })
   @IsNotEmpty()
   @IsString()
-  target_language: string;
+  TASK_ID: string;
+
+  @ApiProperty({
+    description: 'Lesson domain.',
+    example: 'Auto',
+  })
+  @IsNotEmpty()
+  @IsString()
+  DOMAIN: string;
+
+  @ApiProperty({
+    description: 'Difficulty label.',
+    example: 'Beginner',
+  })
+  @IsNotEmpty()
+  @IsString()
+  DIFFICULTY: string;
+
+  @ApiProperty({
+    description: 'Total number of sections in the lesson.',
+    example: 3,
+  })
+  @Type(() => Number)
+  @IsInt()
+  SECTION_TOTAL: number;
+
+  @ApiProperty({
+    description: 'Estimated task time in minutes.',
+    example: 15,
+  })
+  @Type(() => Number)
+  @IsInt()
+  TASK_TIME: number;
+
+  @ApiProperty({
+    description: 'Native language of the learner.',
+    example: 'English',
+  })
+  @IsNotEmpty()
+  @IsString()
+  NATIVE_LANGUAGE: string;
+
+  @ApiProperty({
+    description: 'Test mode for the lesson.',
+    example: 'practice',
+  })
+  @IsNotEmpty()
+  @IsString()
+  TEST_MODE: string;
+
+  @ApiProperty({
+    description: 'Lesson title.',
+    example: 'Auto',
+  })
+  @IsNotEmpty()
+  @IsString()
+  LESSON_TITLE: string;
 }

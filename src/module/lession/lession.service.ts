@@ -1,26 +1,108 @@
 // src/module/lession/lession.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Difficulty, Lesson, LessonType } from '@prisma/client';
+import { Difficulty, LessonType, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { CreateLessonContainerDto } from './dto/create-lesson.dto';
+import { CreateLessonBatchDto } from './dto/create-lesson-batch.dto';
+
+type LessonRecord = Prisma.LessonGetPayload<Record<string, never>>;
+type LessonWithQuestionSetIds = Prisma.LessonGetPayload<{
+  include: { questionSets: { select: { id: true } } };
+}>;
+type LessonWithQuestionSets = Prisma.LessonGetPayload<{
+  include: { questionSets: true };
+}>;
 
 @Injectable()
 export class LessionService {
   constructor(private prisma: PrismaService) {}
 
-  async createLessonContainer(dto: CreateLessonContainerDto): Promise<Lesson> {
+  toAdminLessonResponse(
+    lesson: LessonRecord | LessonWithQuestionSetIds | LessonWithQuestionSets,
+  ) {
+    const questionSets =
+      'questionSets' in lesson ? lesson.questionSets : undefined;
+
+    return {
+      id: lesson.id,
+      provider: lesson.provider,
+      LEVEL_ID: lesson.level,
+      TARGET_LANGUAGE: lesson.target_language,
+      SKILL: lesson.skill,
+      TASK_ID: lesson.task_id,
+      DOMAIN: lesson.domain,
+      DIFFICULTY: lesson.difficulty,
+      SECTION_TOTAL: lesson.section_total ?? questionSets?.length ?? 0,
+      TASK_TIME: lesson.task_time ?? 0,
+      NATIVE_LANGUAGE: lesson.native_language,
+      TEST_MODE: lesson.test_mode,
+      LESSON_TITLE: lesson.lesson_title ?? 'Auto',
+      isPublished: lesson.isPublished,
+      createdAt: lesson.createdAt,
+      ...(questionSets ? { questionSets } : {}),
+    };
+  }
+
+  toBatchAdminLessonResponse(
+    lesson: LessonRecord | LessonWithQuestionSetIds | LessonWithQuestionSets,
+  ) {
+    return {
+      ...this.toAdminLessonResponse(lesson),
+      variant_count: 'variant_count' in lesson ? lesson.variant_count ?? 1 : 1,
+    };
+  }
+
+  toBatchAdminLessonListResponse(result: {
+    data: LessonWithQuestionSetIds[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }) {
+    return {
+      data: result.data.map((lesson) => this.toBatchAdminLessonResponse(lesson)),
+      meta: result.meta,
+    };
+  }
+
+  toAdminLessonListResponse(result: {
+    data: LessonWithQuestionSetIds[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }) {
+    return {
+      data: result.data.map((lesson) => this.toAdminLessonResponse(lesson)),
+      meta: result.meta,
+    };
+  }
+
+  async createLessonContainer(
+    dto: CreateLessonContainerDto,
+  ): Promise<LessonRecord> {
     console.log(`Attempting to create new Lesson container`);
 
     const newLesson = await this.prisma.lesson.create({
       data: {
         provider: dto.provider,
-        skill: dto.skill,
-        task_id: dto.task_id,
-        domain: dto.domain,
-        level: dto.level,
-        target_language: dto.target_language,
+        skill: dto.SKILL,
+        task_id: dto.TASK_ID,
+        domain: dto.DOMAIN,
+        level: dto.LEVEL_ID,
+        difficulty: dto.DIFFICULTY,
+        section_total: dto.SECTION_TOTAL,
+        task_time: dto.TASK_TIME,
+        native_language: dto.NATIVE_LANGUAGE,
+        test_mode: dto.TEST_MODE,
+        lesson_title: dto.LESSON_TITLE,
+        target_language: dto.TARGET_LANGUAGE,
         isPublished: false,
       },
     });
@@ -29,10 +111,38 @@ export class LessionService {
     return newLesson;
   }
 
+  async createLessonBatch(dto: CreateLessonBatchDto): Promise<LessonRecord> {
+    console.log(`Attempting to create new Lesson batch container`);
+
+    const lessonBatchData: Prisma.LessonUncheckedCreateInput = {
+      provider: dto.provider,
+      skill: dto.SKILL,
+      task_id: dto.TASK_ID,
+      domain: dto.DOMAIN,
+      level: dto.LEVEL_ID,
+      difficulty: dto.DIFFICULTY,
+      variant_count: dto.variant_count,
+      section_total: dto.SECTION_TOTAL,
+      task_time: dto.TASK_TIME,
+      native_language: dto.NATIVE_LANGUAGE,
+      test_mode: dto.TEST_MODE,
+      lesson_title: dto.LESSON_TITLE,
+      target_language: dto.TARGET_LANGUAGE,
+      isPublished: false,
+    };
+
+    const newLessonBatch = await this.prisma.lesson.create({
+      data: lessonBatchData,
+    });
+
+    console.log(`Lesson batch container created with ID: ${newLessonBatch.id}`);
+    return newLessonBatch;
+  }
+
   async findNextLessonForUser(
     userId: string,
     type: LessonType,
-  ): Promise<Lesson> {
+  ): Promise<LessonRecord> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { currentLevel: true },
@@ -101,7 +211,7 @@ export class LessionService {
     userId: string,
     type: LessonType,
     level: string,
-  ): Promise<Lesson> {
+  ): Promise<LessonRecord> {
     const completedSessions = await this.prisma.practiceSession.findMany({
       where: { userId, lessonId: { not: null } },
       select: { lessonId: true },
@@ -210,7 +320,7 @@ export class LessionService {
   async updatePublishedStatus(
     lessonId: number,
     dto: UpdateLessonStatusDto,
-  ): Promise<Lesson> {
+  ): Promise<LessonRecord> {
     return this.prisma.lesson.update({
       where: { id: lessonId },
       data: { isPublished: dto.isPublished },
