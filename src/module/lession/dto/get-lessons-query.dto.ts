@@ -43,10 +43,19 @@ export class GetLessonsQueryDto {
   type?: LessonType;
 
   @ApiPropertyOptional({
-    description: 'Filter lessons by level (e.g., a1, a2, b1, b2, c1, c2).',
-    example: 'b1',
+    description:
+      'Filter lessons by level (e.g., A1, A2, B1, B2, C1, C2). Uppercase and lowercase inputs are both supported.',
+    example: 'B1',
   })
   @IsOptional()
   @IsString()
   level?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter lessons by domain.',
+    example: 'Business',
+  })
+  @IsOptional()
+  @IsString()
+  domain?: string;
 }

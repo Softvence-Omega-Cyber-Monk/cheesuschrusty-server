@@ -19,6 +19,29 @@ type LessonWithQuestionSets = Prisma.LessonGetPayload<{
 export class LessionService {
   constructor(private prisma: PrismaService) {}
 
+  private getLevelCandidates(level?: string): string[] {
+    const normalizedLevel = level?.trim();
+
+    if (!normalizedLevel) {
+      return [];
+    }
+
+    return [...new Set([normalizedLevel, normalizedLevel.toUpperCase(), normalizedLevel.toLowerCase()])];
+  }
+
+  private getDomainFilter(domain?: string): Prisma.StringNullableFilter | undefined {
+    const normalizedDomain = domain?.trim();
+
+    if (!normalizedDomain) {
+      return undefined;
+    }
+
+    return {
+      equals: normalizedDomain,
+      mode: 'insensitive',
+    };
+  }
+
   toAdminLessonResponse(
     lesson: LessonRecord | LessonWithQuestionSetIds | LessonWithQuestionSets,
   ) {
@@ -211,7 +234,11 @@ export class LessionService {
     userId: string,
     type: LessonType,
     level: string,
+    domain?: string,
   ): Promise<LessonRecord> {
+    const levelCandidates = this.getLevelCandidates(level);
+    const domainFilter = this.getDomainFilter(domain);
+
     const completedSessions = await this.prisma.practiceSession.findMany({
       where: { userId, lessonId: { not: null } },
       select: { lessonId: true },
@@ -223,7 +250,8 @@ export class LessionService {
     let nextLesson = await this.prisma.lesson.findFirst({
       where: {
         skill: type,
-        level: level.toLowerCase(),
+        ...(levelCandidates.length > 0 && { level: { in: levelCandidates } }),
+        ...(domainFilter && { domain: domainFilter }),
         isPublished: true,
         id: {
           notIn: completedLessonIds.length > 0 ? completedLessonIds : undefined,
@@ -243,7 +271,10 @@ export class LessionService {
             userId,
             lesson: {
               skill: type,
-              level: level.toLowerCase(),
+              ...(levelCandidates.length > 0 && {
+                level: { in: levelCandidates },
+              }),
+              ...(domainFilter && { domain: domainFilter }),
               isPublished: true,
             },
           },
@@ -270,10 +301,13 @@ export class LessionService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
+    const levelCandidates = this.getLevelCandidates(query.level);
+    const domainFilter = this.getDomainFilter(query.domain);
 
     const whereClause: any = {
       ...(query.type && { skill: query.type }),
-      ...(query.level && { level: query.level }),
+      ...(levelCandidates.length > 0 && { level: { in: levelCandidates } }),
+      ...(domainFilter && { domain: domainFilter }),
       ...(query.search && {
         task_id: { contains: query.search, mode: 'insensitive' },
       }),
