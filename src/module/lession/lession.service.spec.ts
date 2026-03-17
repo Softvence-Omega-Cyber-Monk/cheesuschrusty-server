@@ -25,12 +25,13 @@ describe('LessionService', () => {
     service = new LessionService(prisma as unknown as PrismaService);
   });
 
-  it('uses both uppercase and lowercase level candidates for /lessons/filter', async () => {
+  it('combines level, domain, and task_id filters for /lessons/filter', async () => {
     prisma.lesson.findFirst.mockResolvedValue({
       id: 1,
       skill: LessonType.READING,
       level: 'B1',
       domain: 'Business',
+      task_id: 'L-01',
       isPublished: true,
     });
 
@@ -39,6 +40,7 @@ describe('LessionService', () => {
       LessonType.READING,
       'b1',
       'Business',
+      'L-01',
     );
 
     expect(prisma.lesson.findFirst).toHaveBeenCalledWith({
@@ -46,6 +48,7 @@ describe('LessionService', () => {
         skill: LessonType.READING,
         level: { in: ['b1', 'B1'] },
         domain: { equals: 'Business', mode: 'insensitive' },
+        task_id: { equals: 'L-01', mode: 'insensitive' },
         isPublished: true,
         id: { notIn: undefined },
       },

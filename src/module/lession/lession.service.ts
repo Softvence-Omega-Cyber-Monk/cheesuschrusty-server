@@ -42,6 +42,19 @@ export class LessionService {
     };
   }
 
+  private getTaskIdFilter(taskId?: string): Prisma.StringNullableFilter | undefined {
+    const normalizedTaskId = taskId?.trim();
+
+    if (!normalizedTaskId) {
+      return undefined;
+    }
+
+    return {
+      equals: normalizedTaskId,
+      mode: 'insensitive',
+    };
+  }
+
   toAdminLessonResponse(
     lesson: LessonRecord | LessonWithQuestionSetIds | LessonWithQuestionSets,
   ) {
@@ -235,9 +248,11 @@ export class LessionService {
     type: LessonType,
     level: string,
     domain?: string,
+    taskId?: string,
   ): Promise<LessonRecord> {
     const levelCandidates = this.getLevelCandidates(level);
     const domainFilter = this.getDomainFilter(domain);
+    const taskIdFilter = this.getTaskIdFilter(taskId);
 
     const completedSessions = await this.prisma.practiceSession.findMany({
       where: { userId, lessonId: { not: null } },
@@ -252,6 +267,7 @@ export class LessionService {
         skill: type,
         ...(levelCandidates.length > 0 && { level: { in: levelCandidates } }),
         ...(domainFilter && { domain: domainFilter }),
+        ...(taskIdFilter && { task_id: taskIdFilter }),
         isPublished: true,
         id: {
           notIn: completedLessonIds.length > 0 ? completedLessonIds : undefined,
@@ -275,6 +291,7 @@ export class LessionService {
                 level: { in: levelCandidates },
               }),
               ...(domainFilter && { domain: domainFilter }),
+              ...(taskIdFilter && { task_id: taskIdFilter }),
               isPublished: true,
             },
           },

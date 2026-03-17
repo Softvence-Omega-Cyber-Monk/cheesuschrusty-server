@@ -32,6 +32,7 @@ enum LessonType {
   WRITING
   LISTENING
   SPEAKING
+  GRAMMAR
 }
 
 enum SubCategoryType {

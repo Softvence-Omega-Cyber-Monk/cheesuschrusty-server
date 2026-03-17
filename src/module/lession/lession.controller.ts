@@ -73,7 +73,8 @@ export class LessonController {
   @Get('filter')
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'USER: Get the next lesson filtered by type, level, and domain.',
+    summary:
+      'USER: Get the next lesson filtered by type, level, domain, and task ID.',
   })
   @ApiQuery({
     name: 'type',
@@ -91,10 +92,15 @@ export class LessonController {
     required: false,
     description: 'Optional lesson domain filter (e.g., Business, Travel).',
   })
+  @ApiQuery({
+    name: 'task_id',
+    required: false,
+    description: 'Optional task ID filter (e.g., L-01).',
+  })
   @ApiResponse({
     status: 200,
     description:
-      'Returns the lesson content JSON filtered by type, level, and optional domain.',
+      'Returns the lesson content JSON filtered by type, level, and optional domain/task ID.',
   })
   @ApiResponse({ status: 400, description: 'Missing required parameters.' })
   @ApiResponse({
@@ -107,10 +113,11 @@ export class LessonController {
     @Query('type') type: LessonType,
     @Query('level') level: string,
     @Query('domain') domain?: string,
+    @Query('task_id') taskId?: string,
   ) {
     if (!type || !level) {
       throw new BadRequestException(
-        'Both type and level are required query parameters (e.g., ?type=READING&level=B1&domain=Business).',
+        'Both type and level are required query parameters (e.g., ?type=READING&level=B1&domain=Business&task_id=L-01).',
       );
     }
 
@@ -121,6 +128,7 @@ export class LessonController {
       type,
       level,
       domain,
+      taskId,
     );
 
     return sendResponse(res, {
