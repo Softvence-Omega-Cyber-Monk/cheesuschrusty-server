@@ -1,7 +1,7 @@
 // src/module/lesson/dto/get-lessons-query.dto.ts
 
 import { IsOptional, IsInt, IsString, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { LessonType } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -38,6 +38,9 @@ export class GetLessonsQueryDto {
     enum: lessonTypes,
   })
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   @IsIn(lessonTypes)
   type?: LessonType;

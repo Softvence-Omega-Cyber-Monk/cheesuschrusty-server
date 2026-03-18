@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsIn, IsInt } from 'class-validator';
 import { LessonType, AIProvider } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 const lessonTypes = Object.values(LessonType);
 const aiProviders = Object.values(AIProvider);
@@ -36,9 +36,12 @@ export class CreateLessonContainerDto {
   @ApiProperty({
     description: 'Lesson skill type.',
     enum: lessonTypes,
-    example: LessonType.LISTENING,
+    example: LessonType.GRAMMAR,
   })
   @IsNotEmpty()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   @IsIn(lessonTypes)
   SKILL: LessonType;
