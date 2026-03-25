@@ -89,4 +89,109 @@ describe('LessionService', () => {
       },
     });
   });
+
+  it('groups lesson rows into level, practise, task, and domain response data', async () => {
+    prisma.lesson.findMany.mockResolvedValue([
+      {
+        id: 1,
+        level: 'B1',
+        level_title: 'standard',
+        is_pro: false,
+        skill: LessonType.LISTENING,
+        task_id: 'L-01',
+        topic: 'Daily Conversations',
+        schema_name: 'MCQ',
+        domain: 'travel',
+        createdAt: new Date('2026-03-25T00:00:00.000Z'),
+      },
+      {
+        id: 2,
+        level: 'B1',
+        level_title: 'standard',
+        is_pro: true,
+        skill: LessonType.LISTENING,
+        task_id: 'L-01',
+        topic: 'Daily Conversations',
+        schema_name: 'MCQ',
+        domain: 'health',
+        createdAt: new Date('2026-03-25T00:01:00.000Z'),
+      },
+      {
+        id: 3,
+        level: 'B1',
+        level_title: 'standard',
+        is_pro: false,
+        skill: LessonType.READING,
+        task_id: 'R-01',
+        topic: 'Information Search',
+        schema_name: 'Matching',
+        domain: 'education',
+        createdAt: new Date('2026-03-25T00:02:00.000Z'),
+      },
+    ]);
+
+    const result = await service.findGroupedLessons({});
+
+    expect(prisma.lesson.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: [
+        { level: 'asc' },
+        { level_title: 'asc' },
+        { skill: 'asc' },
+        { task_id: 'asc' },
+        { domain: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    expect(result).toEqual([
+      {
+        level_id: 'B1',
+        level_title: 'standard',
+        is_pro: false,
+        practises: [
+          {
+            skill: 'listening',
+            tasks: [
+              {
+                tasks_id: 'L-01',
+                topic: 'Daily Conversations',
+                schema: 'MCQ',
+                domains: [{ name: 'travel', is_pro: false }],
+              },
+            ],
+          },
+          {
+            skill: 'reading',
+            tasks: [
+              {
+                tasks_id: 'R-01',
+                topic: 'Information Search',
+                schema: 'Matching',
+                domains: [{ name: 'education', is_pro: false }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        level_id: 'B1',
+        level_title: 'standard',
+        is_pro: true,
+        practises: [
+          {
+            skill: 'listening',
+            tasks: [
+              {
+                tasks_id: 'L-01',
+                topic: 'Daily Conversations',
+                schema: 'MCQ',
+                domains: [{ name: 'health', is_pro: true }],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
 });

@@ -1,0 +1,5 @@
+ALTER TABLE "lessons"
+ADD COLUMN "topic" TEXT,
+ADD COLUMN "is_pro" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "level_title" TEXT,
+ADD COLUMN "schema" TEXT;

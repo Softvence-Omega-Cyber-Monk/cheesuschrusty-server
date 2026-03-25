@@ -89,6 +89,28 @@ export class LessonAdminController {
     });
   }
 
+  @Get('grouped')
+  @ApiOperation({
+    summary: 'Fetch grouped lesson data by level, skill, task, and domain.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Grouped lesson list retrieved.',
+  })
+  async findGroupedLessons(
+    @Query() query: GetLessonsQueryDto,
+    @Res() res: Response,
+  ) {
+    const lessonsData = await this.lessonService.findGroupedLessons(query);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Grouped lessons retrieved successfully.',
+      data: lessonsData,
+    });
+  }
+
   // --- 3. READ SINGLE (GET /admin/lessons/:id) ---
   @Get(':id')
   @ApiOperation({ summary: ' Get full details of a single lesson by ID.' })

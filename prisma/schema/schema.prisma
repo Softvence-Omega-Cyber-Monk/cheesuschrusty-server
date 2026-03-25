@@ -226,10 +226,14 @@ model UserBadge {
 model Lesson {
   id              Int         @id @default(autoincrement())
   task_id         String?
+  topic           String?
   skill           LessonType?
   provider        AIProvider?
   domain          String?
+  is_pro          Boolean     @default(false)
   level           String?
+  level_title     String?
+  schema_name     String?     @map("schema")
   difficulty      String?
   variant_count   Int         @default(1)
   section_total   Int         @default(0)

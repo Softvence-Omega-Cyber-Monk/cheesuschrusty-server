@@ -14,6 +14,25 @@ type LessonWithQuestionSetIds = Prisma.LessonGetPayload<{
 type LessonWithQuestionSets = Prisma.LessonGetPayload<{
   include: { questionSets: true };
 }>;
+type GroupedLessonTask = {
+  tasks_id: string | null;
+  topic: string | null;
+  schema: string | null;
+  domains: {
+    name: string;
+    is_pro: boolean;
+  }[];
+};
+type GroupedLessonPractice = {
+  skill: string | null;
+  tasks: GroupedLessonTask[];
+};
+type GroupedLessonLevel = {
+  level_id: string | null;
+  level_title: string | null;
+  is_pro: boolean;
+  practises: GroupedLessonPractice[];
+};
 
 @Injectable()
 export class LessionService {
@@ -26,10 +45,18 @@ export class LessionService {
       return [];
     }
 
-    return [...new Set([normalizedLevel, normalizedLevel.toUpperCase(), normalizedLevel.toLowerCase()])];
+    return [
+      ...new Set([
+        normalizedLevel,
+        normalizedLevel.toUpperCase(),
+        normalizedLevel.toLowerCase(),
+      ]),
+    ];
   }
 
-  private getDomainFilter(domain?: string): Prisma.StringNullableFilter | undefined {
+  private getDomainFilter(
+    domain?: string,
+  ): Prisma.StringNullableFilter | undefined {
     const normalizedDomain = domain?.trim();
 
     if (!normalizedDomain) {
@@ -42,7 +69,9 @@ export class LessionService {
     };
   }
 
-  private getTaskIdFilter(taskId?: string): Prisma.StringNullableFilter | undefined {
+  private getTaskIdFilter(
+    taskId?: string,
+  ): Prisma.StringNullableFilter | undefined {
     const normalizedTaskId = taskId?.trim();
 
     if (!normalizedTaskId) {
@@ -65,10 +94,14 @@ export class LessionService {
       id: lesson.id,
       provider: lesson.provider,
       LEVEL_ID: lesson.level,
+      level_title: lesson.level_title,
       TARGET_LANGUAGE: lesson.target_language,
       SKILL: lesson.skill,
       TASK_ID: lesson.task_id,
+      topic: lesson.topic,
       DOMAIN: lesson.domain,
+      is_pro: lesson.is_pro,
+      schema: lesson.schema_name,
       DIFFICULTY: lesson.difficulty,
       SECTION_TOTAL: lesson.section_total ?? questionSets?.length ?? 0,
       TASK_TIME: lesson.task_time ?? 0,
@@ -86,7 +119,8 @@ export class LessionService {
   ) {
     return {
       ...this.toAdminLessonResponse(lesson),
-      variant_count: 'variant_count' in lesson ? lesson.variant_count ?? 1 : 1,
+      variant_count:
+        'variant_count' in lesson ? (lesson.variant_count ?? 1) : 1,
     };
   }
 
@@ -100,7 +134,9 @@ export class LessionService {
     };
   }) {
     return {
-      data: result.data.map((lesson) => this.toBatchAdminLessonResponse(lesson)),
+      data: result.data.map((lesson) =>
+        this.toBatchAdminLessonResponse(lesson),
+      ),
       meta: result.meta,
     };
   }
@@ -130,8 +166,12 @@ export class LessionService {
         provider: dto.provider,
         skill: dto.SKILL,
         task_id: dto.TASK_ID,
+        topic: dto.topic,
         domain: dto.DOMAIN,
+        is_pro: dto.is_pro ?? false,
         level: dto.LEVEL_ID,
+        level_title: dto.level_title,
+        schema_name: dto.schema,
         difficulty: dto.DIFFICULTY,
         section_total: dto.SECTION_TOTAL,
         task_time: dto.TASK_TIME,
@@ -154,8 +194,12 @@ export class LessionService {
       provider: dto.provider,
       skill: dto.SKILL,
       task_id: dto.TASK_ID,
+      topic: dto.topic,
       domain: dto.DOMAIN,
+      is_pro: dto.is_pro ?? false,
       level: dto.LEVEL_ID,
+      level_title: dto.level_title,
+      schema_name: dto.schema,
       difficulty: dto.DIFFICULTY,
       variant_count: dto.variant_count,
       section_total: dto.SECTION_TOTAL,
@@ -353,6 +397,99 @@ export class LessionService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async findGroupedLessons(
+    query: GetLessonsQueryDto,
+  ): Promise<GroupedLessonLevel[]> {
+    const levelCandidates = this.getLevelCandidates(query.level);
+    const domainFilter = this.getDomainFilter(query.domain);
+
+    const whereClause: Prisma.LessonWhereInput = {
+      ...(query.type && { skill: query.type }),
+      ...(levelCandidates.length > 0 && { level: { in: levelCandidates } }),
+      ...(domainFilter && { domain: domainFilter }),
+      ...(query.search && {
+        task_id: { contains: query.search, mode: 'insensitive' },
+      }),
+    };
+
+    const lessons = await this.prisma.lesson.findMany({
+      where: whereClause,
+      orderBy: [
+        { level: 'asc' },
+        { level_title: 'asc' },
+        { skill: 'asc' },
+        { task_id: 'asc' },
+        { domain: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    const levelMap = new Map<string, GroupedLessonLevel>();
+
+    for (const lesson of lessons) {
+      const levelKey = [
+        lesson.level ?? '',
+        lesson.level_title ?? '',
+        lesson.is_pro ? '1' : '0',
+      ].join('|');
+
+      let levelGroup = levelMap.get(levelKey);
+      if (!levelGroup) {
+        levelGroup = {
+          level_id: lesson.level,
+          level_title: lesson.level_title,
+          is_pro: lesson.is_pro,
+          practises: [],
+        };
+        levelMap.set(levelKey, levelGroup);
+      }
+
+      const normalizedSkill = lesson.skill?.toLowerCase() ?? null;
+      let practiceGroup = levelGroup.practises.find(
+        (practice) => practice.skill === normalizedSkill,
+      );
+      if (!practiceGroup) {
+        practiceGroup = {
+          skill: normalizedSkill,
+          tasks: [],
+        };
+        levelGroup.practises.push(practiceGroup);
+      }
+
+      let taskGroup = practiceGroup.tasks.find(
+        (task) =>
+          task.tasks_id === lesson.task_id &&
+          task.topic === lesson.topic &&
+          task.schema === lesson.schema_name,
+      );
+
+      if (!taskGroup) {
+        taskGroup = {
+          tasks_id: lesson.task_id,
+          topic: lesson.topic,
+          schema: lesson.schema_name,
+          domains: [],
+        };
+        practiceGroup.tasks.push(taskGroup);
+      }
+
+      if (
+        lesson.domain &&
+        !taskGroup.domains.some(
+          (domain) =>
+            domain.name === lesson.domain && domain.is_pro === lesson.is_pro,
+        )
+      ) {
+        taskGroup.domains.push({
+          name: lesson.domain,
+          is_pro: lesson.is_pro,
+        });
+      }
+    }
+
+    return Array.from(levelMap.values());
   }
 
   async getSingleLesson(lessonId: number) {
