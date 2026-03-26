@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsIn, IsInt } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { LessonType, AIProvider } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -6,7 +13,7 @@ import { Transform, Type } from 'class-transformer';
 const lessonTypes = Object.values(LessonType);
 const aiProviders = Object.values(AIProvider);
 
-export class CreateLessonContainerDto {
+export class CreateStructuredLessonDto {
   @ApiProperty({
     description: 'The AI provider used for the lesson.',
     enum: aiProviders,
@@ -19,11 +26,19 @@ export class CreateLessonContainerDto {
 
   @ApiProperty({
     description: 'Level identifier for the lesson.',
-    example: 'A1',
+    example: 'B1',
   })
   @IsNotEmpty()
   @IsString()
   LEVEL_ID: string;
+
+  @ApiProperty({
+    description: 'Human-friendly level title.',
+    example: 'standard',
+  })
+  @IsNotEmpty()
+  @IsString()
+  level_title: string;
 
   @ApiProperty({
     description: 'Target language for the lesson.',
@@ -36,7 +51,7 @@ export class CreateLessonContainerDto {
   @ApiProperty({
     description: 'Lesson skill type.',
     enum: lessonTypes,
-    example: LessonType.GRAMMAR,
+    example: LessonType.LISTENING,
   })
   @IsNotEmpty()
   @Transform(({ value }) =>
@@ -55,12 +70,44 @@ export class CreateLessonContainerDto {
   TASK_ID: string;
 
   @ApiProperty({
+    description: 'Lesson topic.',
+    example: 'Daily Conversations',
+  })
+  @IsNotEmpty()
+  @IsString()
+  topic: string;
+
+  @ApiProperty({
     description: 'Lesson domain.',
-    example: 'Auto',
+    example: 'travel',
   })
   @IsNotEmpty()
   @IsString()
   DOMAIN: string;
+
+  @ApiProperty({
+    description: 'Whether this lesson/domain is pro content.',
+    example: false,
+    default: false,
+    required: false,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  is_pro?: boolean = false;
+
+  @ApiProperty({
+    description:
+      'Flexible task schema label. Suggested values: mcq, writing, gapfill, matching, speaking, transform, truefalse.',
+    example: 'mcq',
+  })
+  @IsNotEmpty()
+  @IsString()
+  schema: string;
 
   @ApiProperty({
     description: 'Difficulty label.',
