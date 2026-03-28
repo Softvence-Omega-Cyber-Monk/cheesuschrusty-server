@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsIn, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsIn,
+  IsInt,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator';
 import { LessonType, AIProvider } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -24,6 +31,14 @@ export class CreateLessonContainerDto {
   @IsNotEmpty()
   @IsString()
   LEVEL_ID: string;
+
+  @ApiProperty({
+    description: 'Human-friendly level title.',
+    example: 'standard',
+  })
+  @IsNotEmpty()
+  @IsString()
+  level_title: string;
 
   @ApiProperty({
     description: 'Target language for the lesson.',
@@ -55,12 +70,44 @@ export class CreateLessonContainerDto {
   TASK_ID: string;
 
   @ApiProperty({
+    description: 'Lesson topic.',
+    example: 'Daily Conversations',
+  })
+  @IsNotEmpty()
+  @IsString()
+  topic: string;
+
+  @ApiProperty({
     description: 'Lesson domain.',
     example: 'Auto',
   })
   @IsNotEmpty()
   @IsString()
   DOMAIN: string;
+
+  @ApiProperty({
+    description: 'Whether this lesson/domain is available for pro users.',
+    example: false,
+    default: false,
+    required: false,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  is_pro?: boolean = false;
+
+  @ApiProperty({
+    description:
+      'Task schema label. Suggested values: mcq, writing, gapfill, matching, speaking, transform, truefalse.',
+    example: 'mcq',
+  })
+  @IsNotEmpty()
+  @IsString()
+  schema: string;
 
   @ApiProperty({
     description: 'Difficulty label.',

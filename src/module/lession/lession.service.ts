@@ -6,7 +6,6 @@ import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { CreateLessonContainerDto } from './dto/create-lesson.dto';
 import { CreateLessonBatchDto } from './dto/create-lesson-batch.dto';
-import { CreateStructuredLessonDto } from './dto/create-lesson-structured.dto';
 
 type LessonRecord = Prisma.LessonGetPayload<Record<string, never>>;
 type LessonWithQuestionSetIds = Prisma.LessonGetPayload<{
@@ -95,10 +94,14 @@ export class LessionService {
       id: lesson.id,
       provider: lesson.provider,
       LEVEL_ID: lesson.level,
+      level_title: lesson.level_title,
       TARGET_LANGUAGE: lesson.target_language,
       SKILL: lesson.skill,
       TASK_ID: lesson.task_id,
+      topic: lesson.topic,
       DOMAIN: lesson.domain,
+      is_pro: lesson.is_pro,
+      schema: lesson.schema_name,
       DIFFICULTY: lesson.difficulty,
       SECTION_TOTAL: lesson.section_total ?? questionSets?.length ?? 0,
       TASK_TIME: lesson.task_time ?? 0,
@@ -163,8 +166,12 @@ export class LessionService {
         provider: dto.provider,
         skill: dto.SKILL,
         task_id: dto.TASK_ID,
+        topic: dto.topic,
         domain: dto.DOMAIN,
+        is_pro: dto.is_pro ?? false,
         level: dto.LEVEL_ID,
+        level_title: dto.level_title,
+        schema_name: dto.schema,
         difficulty: dto.DIFFICULTY,
         section_total: dto.SECTION_TOTAL,
         task_time: dto.TASK_TIME,
@@ -187,8 +194,12 @@ export class LessionService {
       provider: dto.provider,
       skill: dto.SKILL,
       task_id: dto.TASK_ID,
+      topic: dto.topic,
       domain: dto.DOMAIN,
+      is_pro: dto.is_pro ?? false,
       level: dto.LEVEL_ID,
+      level_title: dto.level_title,
+      schema_name: dto.schema,
       difficulty: dto.DIFFICULTY,
       variant_count: dto.variant_count,
       section_total: dto.SECTION_TOTAL,
@@ -206,67 +217,6 @@ export class LessionService {
 
     console.log(`Lesson batch container created with ID: ${newLessonBatch.id}`);
     return newLessonBatch;
-  }
-
-  toStructuredAdminLessonResponse(
-    lesson: LessonRecord | LessonWithQuestionSetIds | LessonWithQuestionSets,
-  ) {
-    const questionSets =
-      'questionSets' in lesson ? lesson.questionSets : undefined;
-
-    return {
-      id: lesson.id,
-      provider: lesson.provider,
-      LEVEL_ID: lesson.level,
-      level_title: lesson.level_title,
-      TARGET_LANGUAGE: lesson.target_language,
-      SKILL: lesson.skill,
-      TASK_ID: lesson.task_id,
-      topic: lesson.topic,
-      DOMAIN: lesson.domain,
-      is_pro: lesson.is_pro,
-      schema: lesson.schema_name,
-      DIFFICULTY: lesson.difficulty,
-      SECTION_TOTAL: lesson.section_total ?? questionSets?.length ?? 0,
-      TASK_TIME: lesson.task_time ?? 0,
-      NATIVE_LANGUAGE: lesson.native_language,
-      TEST_MODE: lesson.test_mode,
-      LESSON_TITLE: lesson.lesson_title ?? 'Auto',
-      isPublished: lesson.isPublished,
-      createdAt: lesson.createdAt,
-      ...(questionSets ? { questionSets } : {}),
-    };
-  }
-
-  async createStructuredLesson(
-    dto: CreateStructuredLessonDto,
-  ): Promise<LessonRecord> {
-    console.log(`Attempting to create new structured Lesson container`);
-
-    const newLesson = await this.prisma.lesson.create({
-      data: {
-        provider: dto.provider,
-        skill: dto.SKILL,
-        task_id: dto.TASK_ID,
-        topic: dto.topic,
-        domain: dto.DOMAIN,
-        is_pro: dto.is_pro ?? false,
-        level: dto.LEVEL_ID,
-        level_title: dto.level_title,
-        schema_name: dto.schema,
-        difficulty: dto.DIFFICULTY,
-        section_total: dto.SECTION_TOTAL,
-        task_time: dto.TASK_TIME,
-        native_language: dto.NATIVE_LANGUAGE,
-        test_mode: dto.TEST_MODE,
-        lesson_title: dto.LESSON_TITLE,
-        target_language: dto.TARGET_LANGUAGE,
-        isPublished: false,
-      },
-    });
-
-    console.log(`Structured lesson created with ID: ${newLesson.id}`);
-    return newLesson;
   }
 
   async findNextLessonForUser(

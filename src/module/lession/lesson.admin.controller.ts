@@ -30,7 +30,6 @@ import { UpdateLessonStatusDto } from './dto/update-lesson-status.dto';
 import { LessionService } from './lession.service';
 import sendResponse from '../utils/sendResponse';
 import { CreateLessonContainerDto } from './dto/create-lesson.dto';
-import { CreateStructuredLessonDto } from './dto/create-lesson-structured.dto';
 
 @ApiTags('Lesson Content Management (Super Admin, Content Manager)')
 @Controller('admin/lessons')
@@ -66,29 +65,6 @@ export class LessonAdminController {
     });
   }
 
-  @Post('structured')
-  @ApiOperation({
-    summary: 'Create a structured lesson container with topic/schema metadata.',
-  })
-  @ApiBody({ type: CreateStructuredLessonDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Structured lesson created successfully.',
-  })
-  async createStructuredLesson(
-    @Body() dto: CreateStructuredLessonDto,
-    @Res() res: Response,
-  ) {
-    const newLesson = await this.lessonService.createStructuredLesson(dto);
-
-    return sendResponse(res, {
-      statusCode: HttpStatus.CREATED,
-      success: true,
-      message: 'Structured lesson created successfully.',
-      data: this.lessonService.toStructuredAdminLessonResponse(newLesson),
-    });
-  }
-
   // --- 2. READ ALL (GET /admin/lessons) ---
   @Get()
   @ApiOperation({
@@ -113,7 +89,7 @@ export class LessonAdminController {
     });
   }
 
-  @Get('structured')
+  @Get('grouped')
   @ApiOperation({
     summary: 'Fetch grouped lesson data by level, skill, task, and domain.',
   })
@@ -130,7 +106,7 @@ export class LessonAdminController {
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'Structured lessons retrieved successfully.',
+      message: 'Grouped lessons retrieved successfully.',
       data: lessonsData,
     });
   }
