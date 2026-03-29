@@ -21,6 +21,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { CompleteLessonDto } from './dto/complete-lesson.dto';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { GetLessonsQueryDto } from './dto/get-lessons-query.dto';
 
 @ApiTags('Lesson Practice (User)')
 @Controller('lessons')
@@ -30,6 +31,30 @@ export class LessonController {
     private readonly practiceSessionService: PracticeSessionService,
     private readonly analyticsService: AnalyticsService,
   ) {}
+
+  @Get('grouped')
+  @Roles(Role.USER)
+  @ApiOperation({
+    summary:
+      'USER: Fetch grouped lesson data by level, skill, task, and domain with optional filters.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Grouped lesson list retrieved.',
+  })
+  async findGroupedLessons(
+    @Query() query: GetLessonsQueryDto,
+    @Res() res: Response,
+  ) {
+    const lessonsData = await this.lessonService.findGroupedLessons(query);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Grouped lessons retrieved successfully.',
+      data: lessonsData,
+    });
+  }
 
   @Get('next')
   @Roles(Role.USER)
