@@ -29,13 +29,14 @@ export class SubscriptionPlanService {
 
   /**
    * ADMIN: Updates the configuration of an existing plan.
-   * Allows updating lemonVariantId, price, isActive, and description.
+   * Allows updating name, lemonVariantId, price, isActive, and description.
    */
   async updatePlan(alias: string, dto: UpdatePlanDto): Promise<Plan> {
     try {
       return await this.prisma.plan.update({
         where: { alias },
         data: {
+          name: dto.name,
           lemonVariantId: dto.lemonVariantId,
           price: dto.price,
           isActive: dto.isActive,

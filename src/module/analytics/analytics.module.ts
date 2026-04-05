@@ -1,5 +1,5 @@
-// src/module/analytics/analytics.module.ts
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsController } from './analytics.controller';
 
@@ -10,7 +10,7 @@ import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.s
 import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, HttpModule],
   controllers: [AnalyticsController],
   providers: [
     AnalyticsService,

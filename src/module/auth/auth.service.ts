@@ -97,6 +97,8 @@ export class AuthService {
 
     // Generate OTP for email verification
     const code = generateOtpCode();
+
+    console.log("OTP:", code);
     const hashedCode = await hashOtpCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -121,7 +123,19 @@ export class AuthService {
         `Failed to send verification email to ${newUser.email}`,
         error,
       );
-      // Clean up user if email fails
+
+      // 🔥 PRODUCTION MARK: In production, we MUST delete the user and throw error.
+      // In development, we allow the registration to complete so you can test other things.
+      if (process.env.ENVIRONMENT === 'development') {
+        console.warn('⚠️ DEVELOPMENT: Email failed, but keeping user from being deleted.');
+        return {
+          message: 'Registration successful! (Email skipped due to dev error)',
+          email: newUser.email,
+          username: newUser.username,
+        };
+      }
+
+      // Clean up user if email fails (ONLY IN PRODUCTION)
       await this.prisma.user.delete({ where: { id: newUser.id } });
       throw new BadRequestException(
         'Failed to send verification email. Please try again.',

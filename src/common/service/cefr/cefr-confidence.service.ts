@@ -1,34 +1,42 @@
-// src/common/service/cefr-confidence.service.ts
 import { Injectable, Logger } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SkillArea, ConfidenceLevel, Difficulty } from '@prisma/client';
+import { ConfidenceLevel, Difficulty } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CefrConfidenceService {
   private readonly logger = new Logger(CefrConfidenceService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Main method: Calculate CEFR confidence for one user + one skill
    * Called from queue or manually
    */
-  async updateConfidence(userId: string, skillArea: SkillArea) {
+  async updateConfidence(userId: string, skillArea: string) {
     const sessions = await this.prisma.practiceSession.findMany({
-      where: { userId, skillArea },
+      where: { userId, skillArea: skillArea as any },
       orderBy: { completedAt: 'desc' },
-      take: 50, // Use more data for smoother progression
+      take: 50,
     });
 
     if (sessions.length < 3) {
       // Very little data → show true beginner level (A1)
       await this.prisma.cefrConfidenceCache.upsert({
-        where: { userId_skillArea: { userId, skillArea } },
+        where: {
+          userId_skillArea: { userId, skillArea: skillArea as any },
+        },
         update: { sessionsAnalyzed: sessions.length },
         create: {
           userId,
-          skillArea,
+          skillArea: skillArea as any,
           cefrLevel: Difficulty.A1,
           confidenceLower: 15,
           confidenceUpper: 40,
@@ -47,7 +55,6 @@ export class CefrConfidenceService {
       accuracies.length;
     const stdDev = Math.sqrt(variance);
 
-    // More granular CEFR levels
     let cefrLevel: Difficulty = Difficulty.B1;
     if (avgAccuracy < 45) cefrLevel = Difficulty.A1;
     else if (avgAccuracy < 60) cefrLevel = Difficulty.A2;
@@ -55,22 +62,20 @@ export class CefrConfidenceService {
     else if (avgAccuracy < 90) cefrLevel = Difficulty.B2;
     else cefrLevel = Difficulty.C1;
 
-    // Dynamic confidence range — tighter with consistency & more data
-    let rangeWidth = Math.max(8, stdDev * 2); // Minimum 8% spread
-    if (sessions.length > 20) rangeWidth *= 0.8; // More data = tighter range
-    if (stdDev < 10) rangeWidth *= 0.7; // Very consistent = very tight
+    let rangeWidth = Math.max(8, stdDev * 2);
+    if (sessions.length > 20) rangeWidth *= 0.8;
+    if (stdDev < 10) rangeWidth *= 0.7;
 
     const lower = Math.max(5, avgAccuracy - rangeWidth / 2);
     const upper = Math.min(99, avgAccuracy + rangeWidth / 2);
 
-    // Confidence level based on data quality
     let confidenceLevel: ConfidenceLevel = ConfidenceLevel.LOW;
     if (sessions.length >= 10 && stdDev <= 15)
       confidenceLevel = ConfidenceLevel.MEDIUM;
     if (sessions.length >= 25 && stdDev <= 10)
       confidenceLevel = ConfidenceLevel.HIGH;
 
-    // Trend detection — last 10 vs previous
+    // Trend detection
     const recentAvg =
       accuracies
         .slice(0, Math.min(10, accuracies.length))
@@ -86,50 +91,33 @@ export class CefrConfidenceService {
     else if (recentAvg < olderAvg - 4) trend = 'declining';
 
     await this.prisma.cefrConfidenceCache.upsert({
-      where: { userId_skillArea: { userId, skillArea } },
+      where: {
+        userId_skillArea: { userId, skillArea: skillArea as any },
+      },
       update: {
         cefrLevel,
         confidenceLower: Math.round(lower),
         confidenceUpper: Math.round(upper),
         confidenceLevel,
-        performanceTrend: trend,
+        performanceTrend: trend as any,
         sessionsAnalyzed: sessions.length,
         lastCalculatedAt: new Date(),
       },
       create: {
         userId,
-        skillArea,
+        skillArea: skillArea as any,
         cefrLevel,
         confidenceLower: Math.round(lower),
         confidenceUpper: Math.round(upper),
         confidenceLevel,
-        performanceTrend: trend,
+        performanceTrend: trend as any,
         sessionsAnalyzed: sessions.length,
       },
     });
-
-    this.logger.log(
-      `CEFR ${skillArea} for user ${userId}: ${cefrLevel} (${Math.round(lower)}–${Math.round(upper)}%) ` +
-        `| ${confidenceLevel} | Trend: ${trend} | Sessions: ${sessions.length}`,
-    );
   }
 
-  /**
-   * Cron job: Process queue every hour
-   */
   @Cron(CronExpression.EVERY_HOUR)
   async processQueue() {
-    const count = await this.prisma.confidenceUpdateQueue.count({
-      where: { status: 'pending' },
-    });
-
-    if (count === 0) {
-      this.logger.verbose('No pending CEFR updates — skipping');
-      return;
-    }
-
-    this.logger.log('Starting CEFR confidence queue processing...');
-
     const queued = await this.prisma.confidenceUpdateQueue.findMany({
       where: { status: 'pending' },
       take: 50,
@@ -149,77 +137,82 @@ export class CefrConfidenceService {
         );
       }
     }
-
-    this.logger.log(`Processed ${queued.length} confidence updates`);
   }
 
-  /**
-   * Optional: Force update for one user (for testing)
-   */
-  async forceUpdateForUser(userId: string) {
-    const skills: SkillArea[] = ['reading', 'listening', 'writing', 'speaking'];
-    for (const skill of skills) {
-      await this.updateConfidence(userId, skill);
+  async fetchExternalSkills(): Promise<string[]> {
+    const aiApiUrl = this.configService.get('AI_API_URL');
+    if (!aiApiUrl) return [];
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(`${aiApiUrl}/ai/admin/master-prompt-structure`),
+      );
+      const externalData = response.data;
+      const skillsSet = new Set<string>();
+
+      if (externalData?.data && Array.isArray(externalData.data)) {
+        externalData.data.forEach((level: any) => {
+          if (level.practises && Array.isArray(level.practises)) {
+            level.practises.forEach((practice: any) => {
+              if (practice.skill) {
+                skillsSet.add(practice.skill.toLowerCase());
+              }
+            });
+          }
+        });
+      }
+      return Array.from(skillsSet);
+    } catch (error) {
+      this.logger.error(`Failed to fetch external skills: ${error.message}`);
+      return [];
     }
   }
 
-  /**
-   * Get formatted CEFR progress for all 4 skills (for dashboard display)
-   */
   async getUserProgress(userId: string) {
+    const externalSkills = await this.fetchExternalSkills();
     const cache = await this.prisma.cefrConfidenceCache.findMany({
       where: { userId },
     });
 
-    const allSkills: SkillArea[] = [
-      'reading',
-      'listening',
-      'writing',
-      'speaking',
-    ];
+    const coreSkills = ['reading', 'listening', 'writing', 'speaking', 'grammar'];
+    const dbSkills = cache.map((c) => c.skillArea);
+    const allSkills = Array.from(
+      new Set([...coreSkills, ...dbSkills, ...externalSkills]),
+    );
 
     const skills = allSkills.map((skill) => {
-      const found = cache.find((c) => c.skillArea === skill);
+      const cached = cache.find((c) => c.skillArea === skill);
 
-      // True beginner or no data → A1
-      if (!found || found.sessionsAnalyzed < 3) {
+      if (cached) {
         return {
           skillArea: skill,
-          cefrLevel: 'A1',
-          confidenceLower: 15,
-          confidenceUpper: 40,
-          confidenceLevel: 'LOW' as ConfidenceLevel,
-          performanceTrend: 'stable',
-          sessionsAnalyzed: found?.sessionsAnalyzed || 0,
-          message: "You're just starting — every step counts!",
+          cefrLevel: cached.cefrLevel,
+          confidenceLevel: cached.confidenceLevel,
+          performanceTrend: cached.performanceTrend || 'stable',
+          lastCalculatedAt: cached.lastCalculatedAt,
+          confidenceRange: {
+            lower: cached.confidenceLower,
+            upper: cached.confidenceUpper,
+          },
         };
       }
 
       return {
-        skillArea: found.skillArea,
-        cefrLevel: found.cefrLevel,
-        confidenceLower: found.confidenceLower,
-        confidenceUpper: found.confidenceUpper,
-        confidenceLevel: found.confidenceLevel,
-        performanceTrend: found.performanceTrend,
-        sessionsAnalyzed: found.sessionsAnalyzed,
-        message: this.getMotivationalMessage(found),
+        skillArea: skill,
+        cefrLevel: 'A1',
+        confidenceLevel: 'LOW',
+        performanceTrend: 'stable',
+        lastCalculatedAt: new Date(),
+        confidenceRange: {
+          lower: 5,
+          upper: 15,
+        },
       };
     });
 
-    return { skills };
-  }
-
-  private getMotivationalMessage(data: any): string {
-    if (data.cefrLevel === 'A1') {
-      return "You're just starting — every step counts!";
-    }
-    if (data.confidenceLevel === ConfidenceLevel.HIGH) {
-      return 'Excellent consistency! Keep it up!';
-    }
-    if (data.performanceTrend === 'improving') {
-      return "Amazing improvement! You're getting stronger!";
-    }
-    return 'Daily practice will get you to B1 soon InshaAllah!';
+    return {
+      userId,
+      skills,
+    };
   }
 }

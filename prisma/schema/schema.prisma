@@ -82,6 +82,7 @@ enum SkillArea {
   listening
   writing
   speaking
+  grammar
 }
 
 enum ConfidenceLevel {
@@ -192,7 +193,7 @@ model Badge {
   icon        String // emoji or icon name
   type        BadgeType
   threshold   Int? // for streak, lessons, etc.
-  skillArea   SkillArea? // for skill-specific badges
+  skillArea   String? // for skill-specific tokens/areas
 
   earnedBy UserBadge[]
 
@@ -283,7 +284,7 @@ model PracticeSession {
   lessonId Int?
   lesson   Lesson? @relation(fields: [lessonId], references: [id]) // ← ADD THIS LINE
 
-  skillArea       SkillArea
+  skillArea       String
   accuracy        Float
   durationSeconds Int
   xpEarned        Int
@@ -578,7 +579,7 @@ model CefrConfidenceCache {
   id        String    @id @default(uuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skillArea SkillArea
+  skillArea String
 
   cefrLevel        Difficulty        @default(B1)
   confidenceLower  Float             @default(0)
@@ -597,7 +598,7 @@ model ConfidenceUpdateQueue {
   id        String    @id @default(uuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade) // ← ADD THIS LINE
-  skillArea SkillArea
+  skillArea String
   trigger   String    @default("session_milestone")
   queuedAt  DateTime  @default(now())
   status    String    @default("pending")

@@ -1,5 +1,7 @@
-// src/module/analytics/analytics.service.ts
 import { Injectable, Logger } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
@@ -14,6 +16,8 @@ export class AnalyticsService {
     private practiceSessionService: PracticeSessionService,
     private cefrConfidenceService: CefrConfidenceService,
     private mailService: MailService,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getOverviewDashboard(userId: string) {
@@ -29,34 +33,53 @@ export class AnalyticsService {
 
     if (!user) throw new Error('User not found');
 
-    const isPro =
-      user.subscriptions.length > 0 &&
-      user.subscriptions[0].planAlias?.includes('PRO');
+    const isPro = user.subscriptions.length > 0;
 
-    // This week minutes (as requested — not lifetime)
-    const thisWeekMinutes =
-      await this.practiceSessionService.getWeeklyMinutes(userId);
+    // 1. Fetch external skills from AI API via CEFR service
+    const externalSkills = await this.cefrConfidenceService.fetchExternalSkills();
 
-    // Total available lessons (dynamic from DB)
+    // Today's Date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Lessons completed count & weekly accuracy
+    const [lessonsCompleted, totalSessions, totalAccuracy] =
+      await this.prisma.$transaction([
+        this.prisma.practiceSession.count({
+          where: { userId, lessonId: { not: null } },
+        }),
+        this.prisma.practiceSession.count({ where: { userId } }),
+        this.prisma.practiceSession.aggregate({
+          where: { userId },
+          _avg: { accuracy: true },
+        }),
+      ]);
+
     const totalAvailableLessons = await this.prisma.lesson.count({
       where: { isPublished: true },
     });
-
-    // Lessons completed (lifetime)
-    const lessonsCompleted = user.lessonsCompleted;
     const lessonsProgress =
       totalAvailableLessons > 0
         ? Math.round((lessonsCompleted / totalAvailableLessons) * 100)
         : 0;
 
-    // Weekly accuracy
-    const weeklyAccuracy =
-      (await this.practiceSessionService.getWeeklyAccuracy(userId)) || 0;
+    // Weekly data
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
 
-    // Words learned (total)
+    const weeklyStats = await this.prisma.practiceSession.aggregate({
+      where: { userId, completedAt: { gte: lastWeek } },
+      _sum: { durationSeconds: true },
+      _avg: { accuracy: true },
+    });
+
+    const thisWeekMinutes = Math.round(
+      (weeklyStats._sum.durationSeconds || 0) / 60,
+    );
+    const weeklyAccuracy = weeklyStats._avg.accuracy || 0;
+
+    // Other stats from user directly
     const wordsLearned = user.wordsLearned;
-
-    // Current streak
     const currentStreak = user.currentStreak;
 
     // This week lessons
@@ -66,13 +89,17 @@ export class AnalyticsService {
     // Recent achievements
     const recentAchievements = await this.getRecentAchievements(userId);
 
-    // Practice Areas — real completed lessons per skill
+    // 2. Resolve all skills (Core + External)
+    const coreSkills = ['reading', 'listening', 'writing', 'speaking', 'grammar'];
+    const allSkills = Array.from(new Set([...coreSkills, ...externalSkills]));
+
+    // 3. Map over all resolved skills
     const practiceAreas = await Promise.all(
-      ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
+      allSkills.map(async (skill) => {
         const completed = await this.prisma.practiceSession.count({
           where: {
             userId,
-            skillArea: skill as SkillArea,
+            skillArea: skill as any,
             lessonId: { not: null }, // only real lessons
           },
         });
@@ -80,7 +107,7 @@ export class AnalyticsService {
         const total = await this.prisma.lesson.count({
           where: {
             isPublished: true,
-            skill: skill.toUpperCase() as LessonType, // Changed from 'type' to 'skill'
+            skill: skill.toUpperCase() as LessonType,
           },
         });
 
@@ -98,7 +125,7 @@ export class AnalyticsService {
     return {
       isPro,
       welcomeMessage: `Welcome Back, ${user.name || 'Learner'}! 👋`,
-      weeklyMinutes: thisWeekMinutes, // last week only
+      weeklyMinutes: thisWeekMinutes,
       lessons: {
         completed: lessonsCompleted,
         total: totalAvailableLessons,
@@ -111,7 +138,7 @@ export class AnalyticsService {
         minutes: thisWeekMinutes,
         lessons: thisWeekLessons,
       },
-      practiceAreas, // 4 skills with real progress
+      practiceAreas, // Dynamic skills with progress
       recentAchievements,
     };
   }
@@ -170,13 +197,18 @@ export class AnalyticsService {
           )
         : 0;
 
+    // 2. Fetch all skills (Core + External)
+    const externalSkills = await this.cefrConfidenceService.fetchExternalSkills();
+    const coreSkills = ['reading', 'listening', 'writing', 'speaking', 'grammar'];
+    const allSkills = Array.from(new Set([...coreSkills, ...externalSkills]));
+
     // Practice Areas — lessons completed per skill
     const practiceAreas = await Promise.all(
-      ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
+      allSkills.map(async (skill) => {
         const completed = await this.prisma.practiceSession.count({
           where: {
             userId,
-            skillArea: skill as SkillArea,
+            skillArea: skill as any,
             lessonId: { not: null },
           },
         });
@@ -226,6 +258,7 @@ export class AnalyticsService {
       listening: 'Audio Comprehension',
       writing: 'Composition Practice',
       speaking: 'AI Pronunciation Practice',
+      grammar: 'Grammar & Structure',
     };
     return titles[skill] || skill;
   }

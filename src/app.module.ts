@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/service/prisma/prisma.module';
@@ -50,6 +51,7 @@ import { FaqManagementModule } from './module/faq-management/faq-management.modu
     }),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
+    HttpModule,
     PrismaModule,
     AuthModule,
     UserModule,

@@ -21,6 +21,15 @@ export class UpdatePlanDto {
   lemonVariantId?: string;
 
   @ApiProperty({
+    description: 'The new name of the plan (e.g., Pro Plus)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
+
+  @ApiProperty({
     description: 'The new display price (e.g., 9.99)',
     required: false,
   })

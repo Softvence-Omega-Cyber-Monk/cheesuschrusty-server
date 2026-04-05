@@ -6,15 +6,29 @@ export class MailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    // -------------------------------------------------------------------------
+    // 🚀 PRODUCTION SETTINGS MARK:
+    // Ensure SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS are set in your .env
+    // for production. Currently using sensible defaults for development.
+    // -------------------------------------------------------------------------
+    const host = process.env.SMTP_HOST || 'smtp.ethereal.email'; // Default to Ethereal for dev
+    const port = Number(process.env.SMTP_PORT) || 587;
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT), // 587
-      secure: false, // STARTTLS for 587
+      host,
+      port,
+      secure: port === 465,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user,
+        pass,
       },
     });
+
+    if (process.env.ENVIRONMENT === 'development') {
+      console.log(`📧 MailService initialized with host: ${host}`);
+    }
   }
 
   async sendMail(options: {
@@ -40,6 +54,19 @@ export class MailService {
       return info;
     } catch (error) {
       console.error('Error sending email:', error);
+
+      // -------------------------------------------------------------------------
+      // 🚀 PRODUCTION SETTINGS MARK:
+      // In production, we throw the error so the user knows registration failed.
+      // In development, we log it and continue to avoid unblocking the flow.
+      // -------------------------------------------------------------------------
+      if (process.env.ENVIRONMENT === 'development') {
+        console.warn('⚠️ DEVELOPMENT: SMTP failed. Email content was:');
+        console.warn(`To: ${to}`);
+        console.warn(`Subject: ${subject}`);
+        return { messageId: 'dev-mode-ignoring-error' };
+      }
+
       throw error;
     }
   }

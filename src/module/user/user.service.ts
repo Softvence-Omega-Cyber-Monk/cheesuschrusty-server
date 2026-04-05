@@ -69,6 +69,7 @@ export class UserService {
 
       return {
         id: u.id,
+        username: u.username,
         email: u.email,
         emailVerified: u.emailVerified,
         name: u.name,
@@ -139,8 +140,11 @@ export class UserService {
     const cefrProgress =
       await this.cefrConfidenceService.getUserProgress(userId);
 
+    console.log("CEFR Progress:", cefrProgress);
+
     return {
       id: user.id,
+      username: user.username,
       email: user.email,
       emailVerified: user.emailVerified,
       name: user.name?.trim() || '(No name)',
@@ -172,13 +176,11 @@ export class UserService {
       subscriptionPlan: activePro ? 'PRO' : 'FREE',
       trialAvailable: !user.hasUsedTrial && !activePro,
 
-      // Real CEFR from service (no hardcoded fallback!)
-      cefrSkills: {
-        reading: cefrProgress.skills.find((s) => s.skillArea === 'reading'),
-        listening: cefrProgress.skills.find((s) => s.skillArea === 'listening'),
-        writing: cefrProgress.skills.find((s) => s.skillArea === 'writing'),
-        speaking: cefrProgress.skills.find((s) => s.skillArea === 'speaking'),
-      },
+      // Real CEFR from service (dynamic including grammar + defaults)
+      cefrSkills: cefrProgress.skills.reduce((acc, skill) => {
+        acc[skill.skillArea] = skill;
+        return acc;
+      }, {} as Record<string, any>),
     };
   }
   /**
@@ -470,6 +472,7 @@ export class UserService {
 
     return {
       id: updatedUser.id,
+      username: updatedUser.username,
       email: updatedUser.email,
       emailVerified: updatedUser.emailVerified,
       name: updatedUser.name,

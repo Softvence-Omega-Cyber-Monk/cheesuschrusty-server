@@ -185,10 +185,11 @@ export class LessonController {
     }
 
     const skillAreaMap: Record<string, SkillArea> = {
-      READING: 'reading',
-      LISTENING: 'listening',
-      WRITING: 'writing',
-      SPEAKING: 'speaking',
+      READING: SkillArea.reading,
+      LISTENING: SkillArea.listening,
+      WRITING: SkillArea.writing,
+      SPEAKING: SkillArea.speaking,
+      GRAMMAR: SkillArea.grammar,
     };
 
     const skillArea = skillAreaMap[lesson.skill || 'READING'];

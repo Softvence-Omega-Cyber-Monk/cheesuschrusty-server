@@ -58,13 +58,13 @@ export class SubscriptionPlansController {
 
   /**
    * PATCH /admin/plans/:alias
-   * Allows the admin to update the price, stripePriceId, and isActive status.
+   * Allows the admin to update the name, price, lemonVariantId, and isActive status.
    * This corresponds to the updatePlan method in the service.
    */
   @Patch(':alias')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'ADMIN: Update price, Stripe ID, or active status for a plan.',
+    summary: 'ADMIN: Update name, price, Lemon Squeezy ID, or status for a plan.',
   })
   @ApiParam({
     name: 'alias',
