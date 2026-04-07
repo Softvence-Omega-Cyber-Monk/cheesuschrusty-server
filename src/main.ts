@@ -10,6 +10,12 @@ import * as bodyParser from 'body-parser';
 import * as express from 'express';
 
 async function bootstrap() {
+  // Fix for "Do not know how to serialize a BigInt" error in JSON.stringify
+  (BigInt.prototype as any).toJSON = function () {
+    const num = Number(this);
+    return Number.isSafeInteger(num) ? num : this.toString();
+  };
+
   const app = await NestFactory.create(AppModule, {
     bodyParser: false, // Disable default body parser to configure custom parsers
   });

@@ -61,9 +61,7 @@ import { FaqManagementModule } from './module/faq-management/faq-management.modu
     SubscriptionPlanModule,
     SubscriptionModule,
     QuestionSetModule,
-    FlashcardModule,
     TicketModule,
-    UserModule,
     SettingsModule,
     BrandingSettingsModule,
     SecuritySettingsModule,
@@ -82,7 +80,6 @@ import { FaqManagementModule } from './module/faq-management/faq-management.modu
   controllers: [AppController],
   providers: [
     AppService,
-    SeederService,
     CefrConfidenceService,
     CloudinaryService,
     StreakReminderCron,

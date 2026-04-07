@@ -1,6 +1,5 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -150,6 +149,12 @@ model User {
   streakRemindersEnabled   Boolean @default(true)
   achievementAlertsEnabled Boolean @default(true)
 
+  // Acquisition Tracking
+  acquisitionChannel String?
+  utmSource          String?
+  utmMedium          String?
+  referralCode       String?
+
   // Relations
   practiceSessions        PracticeSession[]
   earnedBadges            UserBadge[]
@@ -169,6 +174,7 @@ model User {
   supportChatMessages     SupportChatMessage[]
   supportChatTickets      SupportChatTicket[]
   supportChatReplies      SupportChatTicketReply[] @relation("SupportChatAdminReplies")
+  subscriptionHistory     SubscriptionHistory[]
 
   @@map("users")
 }
@@ -378,10 +384,32 @@ model Subscription {
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
 
+  cancellationReason String?
+
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
+}
+
+model SubscriptionHistory {
+  id              String   @id @default(uuid())
+  userId          String
+  planAlias       String
+  price           Float
+  mrrContribution Float
+  status          String
+  event           String // 'NEW', 'RENEWAL', 'UPGRADE', 'DOWNGRADE', 'CHURN'
+  cancellationReason String?
+  recordedAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recordedAt])
+  @@map("subscription_history")
 }
 
 model Plan {

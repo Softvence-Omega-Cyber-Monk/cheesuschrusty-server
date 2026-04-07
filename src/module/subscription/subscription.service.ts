@@ -457,11 +457,20 @@ export class SubscriptionService {
       });
 
       this.logger.log(`✅ Subscription ${dbStatus} for user ${userId}`);
+
+      if (planAlias) {
+        // Log history for MRR analytics
+        await this.logSubscriptionHistory(
+          userId,
+          planAlias,
+          dbStatus,
+          event === 'subscription_created' ? 'NEW' : 'RENEWAL',
+        );
+      }
     }
 
     /* ===============================
        LIFETIME PLANS
-       Grant on order_created (ignore license_key_created)
     =============================== */
     if (event === 'order_created' && isLifetime) {
       const lemonCustomerId = attrs?.customer_id?.toString();
@@ -490,6 +499,14 @@ export class SubscriptionService {
       });
 
       this.logger.log(`🔥 LIFETIME access granted for user ${userId}`);
+
+      // Log for history (Lifetime usually $0 MRR but still an event)
+      await this.logSubscriptionHistory(
+        userId,
+        'PRO_LIFETIME',
+        'active',
+        'NEW',
+      );
     }
 
     /* ===============================
@@ -501,7 +518,55 @@ export class SubscriptionService {
         data: { status: 'canceled_at_period_end' },
       });
 
+      const sub = await this.prisma.subscription.findUnique({
+        where: { userId },
+      });
+
+      if (sub && sub.planAlias) {
+        await this.logSubscriptionHistory(
+          userId,
+          sub.planAlias,
+          'canceled_at_period_end',
+          'CHURN',
+        );
+      }
+
       this.logger.log(`⚠️ Subscription cancellation scheduled: ${userId}`);
+    }
+  }
+
+  /* ======================================================
+     Helper to log subscription events for historical analytics
+  ====================================================== */
+  private async logSubscriptionHistory(
+    userId: string,
+    planAlias: string,
+    status: string,
+    event: string,
+  ) {
+    try {
+      const plan = await this.prisma.plan.findUnique({
+        where: { alias: planAlias },
+      });
+      if (!plan) return;
+
+      let mrrContribution = plan.price;
+      if (plan.interval === 'year') mrrContribution /= 12;
+      if (plan.interval === 'lifetime' || plan.price === 0)
+        mrrContribution = 0;
+
+      await this.prisma.subscriptionHistory.create({
+        data: {
+          userId,
+          planAlias,
+          price: plan.price,
+          mrrContribution,
+          status,
+          event,
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to log subscription history', error);
     }
   }
 
