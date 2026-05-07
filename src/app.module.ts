@@ -33,6 +33,7 @@ import { UserSettingsModule } from './module/user-settings/user-settings.module'
 import { SupportChatModule } from './module/support-chat/support-chat.module';
 import { IntegrationManagementModule } from './module/integration-management/integration-management.module';
 import { FaqManagementModule } from './module/faq-management/faq-management.module';
+import { HealthModule } from './module/health/health.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { FaqManagementModule } from './module/faq-management/faq-management.modu
     SupportChatModule,
     IntegrationManagementModule,
     FaqManagementModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
