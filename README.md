@@ -150,6 +150,27 @@ The user phase is a highly interactive loop that feeds data into the gamificatio
     *   **Gamification**: Automated updates to daily streaks and badge awards.
     *   **Proficiency**: Real-time recalibration of the `CefrConfidenceCache` based on performance.
 
+### 📊 Content Generation Sequence (Admin)
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant S as NestJS Server
+    participant DB as PostgreSQL
+    participant AI as AI Provider (OpenAI/Grok)
+
+    A->>S: POST /lession (Topic, Level, Skill)
+    S->>DB: Create Lesson (isPublished: false)
+    A->>S: POST /question-set (Trigger AI)
+    S->>DB: Fetch System Prompt & AI Keys
+    S->>AI: Request JSON Content
+    AI-->>S: Return Exercises JSON
+    S->>DB: Save to QuestionSet Table
+    A->>S: PATCH /lession/:id (isPublished: true)
+    S->>DB: Update Status
+    Note over S,DB: Content is now live for Users
+```
+
 ### 📊 User Learning Sequence
 
 ```mermaid
@@ -175,26 +196,6 @@ sequenceDiagram
     S-->>U: Show "Session Complete" (XP + Achievements)
 ```
 
-### 📊 Content Generation Sequence (Admin)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin
-    participant S as NestJS Server
-    participant DB as PostgreSQL
-    participant AI as AI Provider (OpenAI/Grok)
-
-    A->>S: POST /lession (Topic, Level, Skill)
-    S->>DB: Create Lesson (isPublished: false)
-    A->>S: POST /question-set (Trigger AI)
-    S->>DB: Fetch System Prompt & AI Keys
-    S->>AI: Request JSON Content
-    AI-->>S: Return Exercises JSON
-    S->>DB: Save to QuestionSet Table
-    A->>S: PATCH /lession/:id (isPublished: true)
-    S->>DB: Update Status
-    Note over S,DB: Content is now live for Users
-```
 
 ## 🛠 Development
 
