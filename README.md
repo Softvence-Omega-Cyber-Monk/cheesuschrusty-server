@@ -126,11 +126,44 @@ erDiagram
         string headingFont
     }
 
-    SECURITY_SETTINGS {
-        int id PK
-        int maxLoginAttempts
-        boolean gdprComplianceMode
-    }
+```
+
+## 🔄 Lesson Management Workflow
+
+The platform utilizes a sophisticated AI-driven content pipeline, divided into administrative creation and user consumption phases.
+
+### 1. Admin Phase (Content Creation)
+The creation phase orchestrates metadata setup with dynamic AI payload generation.
+
+1.  **Initialization**: Admin creates a `Lesson` record defining the Topic, CEFR Level (A1-C2), and Skill Area (Reading, Grammar, etc.).
+2.  **AI Generation**: The system retrieves the appropriate `SystemPrompt` and calls a configured AI Provider (OpenAI, Gemini, or Grok).
+3.  **Schema Enforcement**: The AI returns a structured JSON payload (Passages, Questions, Answers) which is stored in the `QuestionSet` table.
+4.  **Publication**: After review, the Admin sets `isPublished: true`, making the content live for users.
+
+### 2. User Phase (Learning Consumption)
+1.  **Discovery**: Users browse published lessons filtered by their current proficiency level.
+2.  **Engagement**: The system serves the `QuestionSet` content.
+3.  **Persistence**: Upon completion, a `PracticeSession` record is created, updating the user's XP, Streaks, and CEFR confidence level.
+
+### 📊 Content Generation Sequence
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant S as NestJS Server
+    participant DB as PostgreSQL
+    participant AI as AI Provider (OpenAI/Grok)
+
+    A->>S: POST /lession (Topic, Level, Skill)
+    S->>DB: Create Lesson (isPublished: false)
+    A->>S: POST /question-set (Trigger AI)
+    S->>DB: Fetch System Prompt & AI Keys
+    S->>AI: Request JSON Content
+    AI-->>S: Return Exercises JSON
+    S->>DB: Save to QuestionSet Table
+    A->>S: PATCH /lession/:id (isPublished: true)
+    S->>DB: Update Status
+    Note over S,DB: Content is now live for Users
 ```
 
 ## 🛠 Development
