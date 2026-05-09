@@ -105,6 +105,8 @@ enum ChatSupportTicketStatus {
 enum CredentialProvider {
   OPENAI
   GROK
+  GEMINI
+  STRIPE
   LEMONSQUEEZY
   CLOUDINARY
 }

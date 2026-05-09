@@ -13,11 +13,14 @@ import {
 import { CredentialProvider, Role } from '@prisma/client';
 import { Response } from 'express';
 import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import sendResponse from '../utils/sendResponse';
 import { RecordIntegrationUsageDto } from './dto/record-integration-usage.dto';
 import { UpsertIntegrationCredentialDto } from './dto/upsert-integration-credential.dto';
 import { IntegrationManagementService } from './integration-management.service';
+
+import { RevealCredentialDto } from './dto/reveal-credential.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Integration Management')
 @Controller('integration-management')
@@ -27,10 +30,49 @@ export class IntegrationManagementController {
     private readonly integrationManagementService: IntegrationManagementService,
   ) {}
 
+  @Post('credentials/:provider/reveal')
+  @ApiOperation({
+    summary: 'Securely reveal raw credentials for a provider (requires password).',
+    description: `Requires step-up authentication. The admin must provide their current password. 
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/integration-management/credentials/OPENAI/reveal \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"password": "your-admin-password"}'
+    \`\`\``,
+  })
+  @ApiBody({ type: RevealCredentialDto })
+  async revealCredential(
+    @Param('provider', new ParseEnumPipe(CredentialProvider))
+    provider: CredentialProvider,
+    @Body() dto: RevealCredentialDto,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const data = await this.integrationManagementService.revealCredentials(
+      user.id,
+      provider,
+      dto.password,
+    );
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Credentials revealed successfully. This action has been logged.',
+      data,
+    });
+  }
+
   @Get('credentials')
   @ApiOperation({
-    summary:
-      'Get masked credential metadata for OpenAI, Grok, LemonSqueezy, and Cloudinary.',
+    summary: 'Get masked credential metadata for all providers.',
+    description: `Lists all configured integrations with masked keys (e.g. sk-***abcd). 
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/integration-management/credentials \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
   })
   async getCredentials(@Res() res: Response) {
     const data = await this.integrationManagementService.listCredentials();
@@ -46,6 +88,14 @@ export class IntegrationManagementController {
   @Put('credentials/:provider')
   @ApiOperation({
     summary: 'Create or rotate encrypted credentials for a provider.',
+    description: `Encrypts and stores service keys. Use the provider name in the URL.
+    **Curl Example (Cloudinary):**
+    \`\`\`bash
+    curl -X PUT http://localhost:5001/api/v1/integration-management/credentials/CLOUDINARY \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"credentials": {"cloud_name": "test", "api_key": "123", "api_secret": "shh"}}'
+    \`\`\``,
   })
   @ApiBody({ type: UpsertIntegrationCredentialDto })
   async upsertCredential(
@@ -69,8 +119,15 @@ export class IntegrationManagementController {
 
   @Post('usage')
   @ApiOperation({
-    summary:
-      'Record a usage stat for OpenAI, Grok, LemonSqueezy, or Cloudinary.',
+    summary: 'Record a usage stat for an integration.',
+    description: `Manually log token usage or costs for an external service.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/integration-management/usage \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"provider": "OPENAI", "operation": "chat", "totalUnits": 1000, "costUsd": 0.01}'
+    \`\`\``,
   })
   @ApiBody({ type: RecordIntegrationUsageDto })
   async recordUsage(
@@ -88,7 +145,15 @@ export class IntegrationManagementController {
   }
 
   @Get('usage')
-  @ApiOperation({ summary: 'Get usage stat records.' })
+  @ApiOperation({
+    summary: 'Get detailed usage stat records.',
+    description: `Retrieves a list of all logged usage events with optional filters.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET "http://localhost:5001/api/v1/integration-management/usage?provider=OPENAI" \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
   @ApiQuery({ name: 'provider', required: false, enum: CredentialProvider })
   @ApiQuery({ name: 'from', required: false, type: String })
   @ApiQuery({ name: 'to', required: false, type: String })
@@ -113,7 +178,15 @@ export class IntegrationManagementController {
   }
 
   @Get('usage-summary')
-  @ApiOperation({ summary: 'Get aggregated usage stats.' })
+  @ApiOperation({
+    summary: 'Get aggregated usage summary.',
+    description: `Returns totals and provider-specific breakdowns of costs and requests.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/integration-management/usage-summary \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
   @ApiQuery({ name: 'provider', required: false, enum: CredentialProvider })
   @ApiQuery({ name: 'from', required: false, type: String })
   @ApiQuery({ name: 'to', required: false, type: String })

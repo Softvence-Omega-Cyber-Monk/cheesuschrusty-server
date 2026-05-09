@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Redirect } from '@nestjs/common';
+import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { Public } from './common/decorators/public.decorators';
 
@@ -8,7 +9,16 @@ export class AppController {
 
   @Public()
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @Redirect('/docs', 308)
+  @ApiExcludeEndpoint()
+  getHello() {
+    return { url: '/docs' };
+  }
+
+  @Public()
+  @Get('favicon.ico')
+  @ApiExcludeEndpoint()
+  getFavicon() {
+    return;
   }
 }

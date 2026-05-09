@@ -34,6 +34,7 @@ import { SupportChatModule } from './module/support-chat/support-chat.module';
 import { IntegrationManagementModule } from './module/integration-management/integration-management.module';
 import { FaqManagementModule } from './module/faq-management/faq-management.module';
 import { HealthModule } from './module/health/health.module';
+import { EncryptionModule } from './common/service/encryption/encryption.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { HealthModule } from './module/health/health.module';
     IntegrationManagementModule,
     FaqManagementModule,
     HealthModule,
+    EncryptionModule,
   ],
   controllers: [AppController],
   providers: [

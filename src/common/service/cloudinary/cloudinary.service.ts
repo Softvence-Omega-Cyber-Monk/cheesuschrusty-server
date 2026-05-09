@@ -1,10 +1,29 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
-import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
-import { Cloudinary } from './cloudinary.types';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import { DynamicConfigService } from 'src/module/integration-management/dynamic-config.service';
+import { CredentialProvider } from '@prisma/client';
 
 @Injectable()
 export class CloudinaryService {
-  constructor(@Inject('CLOUDINARY') private cloudinary: Cloudinary) {}
+  private readonly logger = new Logger(CloudinaryService.name);
+
+  constructor(private readonly dynamicConfig: DynamicConfigService) {}
+
+  private async getClient() {
+    const credentials = await this.dynamicConfig.getCredentials(CredentialProvider.CLOUDINARY);
+    
+    if (!credentials || !credentials.cloud_name) {
+      throw new BadRequestException('Cloudinary is not configured.');
+    }
+
+    cloudinary.config({
+      cloud_name: String(credentials.cloud_name),
+      api_key: String(credentials.api_key),
+      api_secret: String(credentials.api_secret),
+    });
+
+    return cloudinary;
+  }
 
   async uploadImage(
     file: Express.Multer.File,
@@ -14,8 +33,10 @@ export class CloudinaryService {
       throw new BadRequestException('No file provided');
     }
 
+    const client = await this.getClient();
+
     return new Promise((resolve, reject) => {
-      this.cloudinary.uploader
+      client.uploader
         .upload_stream(
           {
             folder,
@@ -37,9 +58,10 @@ export class CloudinaryService {
     if (!publicId) return;
 
     try {
-      await this.cloudinary.uploader.destroy(publicId);
+      const client = await this.getClient();
+      await client.uploader.destroy(publicId);
     } catch (error) {
-      console.warn('Failed to delete cloudinary image:', error);
+      this.logger.warn('Failed to delete cloudinary image:', error);
     }
   }
 }

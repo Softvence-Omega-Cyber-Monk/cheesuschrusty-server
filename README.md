@@ -19,40 +19,42 @@ Backend for the ItalianMaster language learning platform. This is an AI-powered 
 - **Payments**: Stripe, Lemon Squeezy
 - **Storage**: Cloudinary
 
-## 📊 Database Schema
+## 📊 Database Architecture
+
+The following diagram illustrates the complete database structure, highlighting the relationships between users, learning content, gamification, and system configuration.
 
 ```mermaid
 erDiagram
+    %% User Core
+    USER ||--o| USER_SETTINGS : "configures"
+    USER ||--o| STUDY_PLAN : "follows"
     USER ||--o{ PRACTICE_SESSION : "performs"
     USER ||--o{ USER_BADGE : "earns"
-    USER ||--o{ CEFR_CONFIDENCE_CACHE : "has_proficiency"
-    USER ||--o{ CONFIDENCE_UPDATE_QUEUE : "queued_updates"
     USER ||--o{ FLASHCARD_PROGRESS : "tracks_learning"
-    USER ||--o{ USER_NOTIFICATION : "receives"
     USER ||--o{ SUBSCRIPTION : "subscribed_to"
-    USER ||--o{ SUPPORT_TICKET : "opens"
-    USER ||--o{ ACTIVE_FLASHCARD_SESSION : "starts"
-    USER ||--o{ CHAT_SESSION : "interacts_with_ai"
-    USER ||--o{ KNOWLEDGE_ENTRY : "contributes"
-    USER ||--o| STUDY_PLAN : "follows"
-    USER ||--o| USER_SETTINGS : "configures"
     
+    %% Learning & AI
     LESSON ||--o{ QUESTION_SET : "contains"
     LESSON ||--o{ PRACTICE_SESSION : "evaluated_in"
-    
-    BADGE ||--o{ USER_BADGE : "awarded_via"
-    
-    FLASHCARD_CATEGORY ||--o{ CARD : "organizes"
-    CARD ||--o{ FLASHCARD_PROGRESS : "managed_by_srs"
-    
+    USER ||--o{ CHAT_SESSION : "interacts_with_ai"
     CHAT_SESSION ||--o{ CHAT_MESSAGE : "logs"
     
-    SUPPORT_TICKET ||--o{ SUPPORT_TICKET_MESSAGE : "contains"
+    %% SRS & Gamification
+    FLASHCARD_CATEGORY ||--o{ CARD : "organizes"
+    CARD ||--o{ FLASHCARD_PROGRESS : "managed_by_srs"
+    BADGE ||--o{ USER_BADGE : "awarded_via"
     
+    %% Support System
+    USER ||--o{ SUPPORT_TICKET : "opens"
+    SUPPORT_TICKET ||--o{ SUPPORT_TICKET_MESSAGE : "contains"
+    USER ||--o{ SUPPORT_CHAT_TICKET : "requests_help"
     SUPPORT_CHAT_MESSAGE ||--o| SUPPORT_CHAT_TICKET : "linked_to"
     SUPPORT_CHAT_TICKET ||--o{ SUPPORT_CHAT_TICKET_REPLY : "resolved_by"
-
+    
+    %% Analytics & Infrastructure
     INTEGRATION_CREDENTIAL ||--o{ INTEGRATION_USAGE_STAT : "tracks_costs"
+    USER ||--o{ CEFR_CONFIDENCE_CACHE : "has_proficiency"
+    USER ||--o{ USER_NOTIFICATION : "receives"
 
     USER {
         string id PK
@@ -60,7 +62,6 @@ erDiagram
         string role "USER, ADMIN, etc."
         int xp
         int currentStreak
-        string targetLang "Italian"
         string currentLevel "Difficulty"
     }
 
@@ -68,8 +69,8 @@ erDiagram
         int id PK
         string topic
         string skill "READING, WRITING, etc."
-        string level "A1-C2"
         boolean is_pro
+        string level "A1-C2"
     }
 
     PRACTICE_SESSION {
@@ -87,36 +88,48 @@ erDiagram
         int cardId FK
         float easeFactor
         datetime nextReview
-        int repetitions
-    }
-
-    SUBSCRIPTION {
-        string id PK
-        string userId FK
-        string plan "FREE, PRO"
-        string status
-        datetime currentPeriodEnd
-    }
-
-    CHAT_SESSION {
-        string id PK
-        string userId FK
-        string title
-        string status "ACTIVE, CLOSED"
-    }
-
-    SUPPORT_TICKET {
-        string id PK
-        string userId FK
-        string subject
-        string status "OPEN, RESOLVED"
-        string priority "LOW, MEDIUM, HIGH"
     }
 
     INTEGRATION_CREDENTIAL {
         string id PK
-        string provider UK "OPENAI, GEMINI, etc."
+        string provider UK "OPENAI, STRIPE, etc."
         string encryptedPayload
+        boolean isActive
+    }
+
+    INTEGRATION_USAGE_STAT {
+        string id PK
+        string provider FK
+        float costUsd
+        int requestCount
+        datetime recordedAt
+    }
+
+    CEFR_CONFIDENCE_CACHE {
+        string id PK
+        string userId FK
+        string skillArea "reading, etc."
+        string cefrLevel "A1-C2"
+        float confidenceLevel
+    }
+
+    SUPPORT_CHAT_TICKET {
+        string id PK
+        string userId FK
+        string status "OPEN, CLOSED"
+        datetime updatedAt
+    }
+
+    BRANDING_SETTINGS {
+        int id PK
+        string primaryColor
+        string headingFont
+    }
+
+    SECURITY_SETTINGS {
+        int id PK
+        int maxLoginAttempts
+        boolean gdprComplianceMode
     }
 ```
 

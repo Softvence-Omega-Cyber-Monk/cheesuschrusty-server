@@ -269,9 +269,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
-import { lemon } from './lemon-squeezy.client';
-import { verifySignature } from './subscriptions.webhook';
 import { SubscriptionPlan } from '@prisma/client';
+import { LemonSqueezyClient } from './lemon-squeezy.client';
+import { verifySignature } from './subscriptions.webhook';
 
 type SubscriptionStatusString =
   | 'trialing'
@@ -285,7 +285,10 @@ type SubscriptionStatusString =
 export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private lemonClient: LemonSqueezyClient,
+  ) {}
 
   /* ======================================================
      1️⃣ CREATE CHECKOUT
@@ -328,6 +331,7 @@ export class SubscriptionService {
       );
     }
 
+    const lemon = await this.lemonClient.getClient();
     const res = await lemon.post('/checkouts', {
       data: {
         type: 'checkouts',
@@ -522,6 +526,7 @@ export class SubscriptionService {
     }
 
     if (sub.lemonSubscriptionId) {
+      const lemon = await this.lemonClient.getClient();
       await lemon.delete(`/subscriptions/${sub.lemonSubscriptionId}`);
     }
 
