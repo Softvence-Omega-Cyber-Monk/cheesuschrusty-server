@@ -141,11 +141,41 @@ The creation phase orchestrates metadata setup with dynamic AI payload generatio
 4.  **Publication**: After review, the Admin sets `isPublished: true`, making the content live for users.
 
 ### 2. User Phase (Learning Consumption)
-1.  **Discovery**: Users browse published lessons filtered by their current proficiency level.
-2.  **Engagement**: The system serves the `QuestionSet` content.
-3.  **Persistence**: Upon completion, a `PracticeSession` record is created, updating the user's XP, Streaks, and CEFR confidence level.
+The user phase is a highly interactive loop that feeds data into the gamification and AI proficiency engines.
 
-### 📊 Content Generation Sequence
+1.  **Discovery**: Users browse published lessons filtered by their current CEFR proficiency level (A1-C2).
+2.  **Engagement**: The system serves the `QuestionSet` exercise payload (JSON).
+3.  **Persistence**: Upon completion, a `PracticeSession` record is created, capturing accuracy, duration, and XP.
+4.  **Side Effects**:
+    *   **Gamification**: Automated updates to daily streaks and badge awards.
+    *   **Proficiency**: Real-time recalibration of the `CefrConfidenceCache` based on performance.
+
+### 📊 User Learning Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as NestJS Server
+    participant DB as PostgreSQL
+
+    U->>S: GET /lession (Filtered by Level)
+    S->>DB: Query Published Lessons
+    DB-->>S: Return Lessons List
+    S-->>U: Show Lessons in App
+    U->>S: GET /question-set/lesson/:id
+    S->>DB: Fetch JSON Content
+    DB-->>S: Return Content Payload
+    S-->>U: Start Exercise
+    Note over U: User completes lesson...
+    U->>S: POST /practice-sessions (Accuracy, Time)
+    S->>DB: Create PracticeSession Record
+    S->>DB: Update User XP & Streaks
+    S->>DB: Re-calculate CEFR Confidence
+    S->>DB: Check & Award Badges
+    S-->>U: Show "Session Complete" (XP + Achievements)
+```
+
+### 📊 Content Generation Sequence (Admin)
 
 ```mermaid
 sequenceDiagram
