@@ -48,9 +48,42 @@ export class LessonAdminController {
 
   // --- 1. CREATE (POST /admin/lessons) ---
   @Post()
-  @ApiOperation({ summary: ' Create the lession container' })
+  @ApiOperation({ 
+    summary: 'Create a new lesson metadata container.',
+    description: `Initializes a lesson shell with difficulty, skill, and topic. This shell must be created before generating AI content.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/admin/lessons \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{
+      "LESSON_TITLE": "Advanced Italian Grammar",
+      "topic": "Subjunctive Mood",
+      "SKILL": "GRAMMAR",
+      "LEVEL_ID": "C1",
+      "GENERATION_SEED": "Focus on high-level academic conversation."
+    }'
+    \`\`\``
+  })
   @ApiBody({ type: CreateLessonContainerDto })
-  @ApiResponse({ status: 201, description: 'Lesson created successfully.' })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Lesson created successfully.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        message: 'Lesson created and published successfully.',
+        data: {
+          id: 105,
+          LESSON_TITLE: 'Advanced Italian Grammar',
+          topic: 'Subjunctive Mood',
+          isPublished: false,
+          generation_seed: 'Focus on high-level academic conversation.'
+        }
+      }
+    }
+  })
   async createLesson(
     @Body() dto: CreateLessonContainerDto,
     @Res() res: Response,
@@ -113,9 +146,32 @@ export class LessonAdminController {
 
   // --- 3. READ SINGLE (GET /admin/lessons/:id) ---
   @Get(':id')
-  @ApiOperation({ summary: ' Get full details of a single lesson by ID.' })
+  @ApiOperation({ 
+    summary: 'Get full details of a single lesson by ID.',
+    description: `Retrieves the full lesson metadata and associated question sets.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/admin/lessons/105 \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
+  })
   @ApiParam({ name: 'id', description: 'Lesson ID (integer)', type: 'number' })
-  @ApiResponse({ status: 200, description: 'Lesson details retrieved.' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lesson details retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: {
+          id: 105,
+          LESSON_TITLE: 'Advanced Italian Grammar',
+          SKILL: 'GRAMMAR',
+          isPublished: false
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Lesson not found.' })
   async getSingleLesson(@Param('id') lessonId: string, @Res() res: Response) {
     const id = this.parseLessonId(lessonId);
@@ -133,10 +189,19 @@ export class LessonAdminController {
   // --- 4. UPDATE STATUS (PATCH /admin/lessons/:id/status) ---
   @Patch(':id/status')
   @ApiOperation({
-    summary: 'Update the publication status (isPublished) of a lesson.',
+    summary: 'Update lesson publication status.',
+    description: `Toggles whether a lesson is visible to students.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X PATCH http://localhost:5001/api/v1/admin/lessons/105/status \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"isPublished": true}'
+    \`\`\``
   })
   @ApiParam({ name: 'id', description: 'Lesson ID (integer)', type: 'number' })
   @ApiBody({ type: UpdateLessonStatusDto })
+  @ApiResponse({ status: 200, description: 'Status updated.' })
   @ApiResponse({ status: 200, description: 'Lesson status updated.' })
   @ApiResponse({ status: 404, description: 'Lesson not found.' })
   async updateStatus(
@@ -162,12 +227,17 @@ export class LessonAdminController {
   // --- 5. DELETE (DELETE /admin/lessons/:id) ---
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: ' Delete a lesson and all related user progress.' })
-  @ApiParam({ name: 'id', description: 'Lesson ID (integer)', type: 'number' })
-  @ApiResponse({
-    status: 204,
-    description: 'Lesson deleted successfully (No Content).',
+  @ApiOperation({ 
+    summary: 'Delete a lesson.',
+    description: `Permanently removes a lesson and associated question sets.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X DELETE http://localhost:5001/api/v1/admin/lessons/105 \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
   })
+  @ApiParam({ name: 'id', description: 'Lesson ID (integer)', type: 'number' })
+  @ApiResponse({ status: 204, description: 'Lesson deleted.' })
   @ApiResponse({ status: 404, description: 'Lesson not found.' })
   async deleteLesson(@Param('id') lessonId: string, @Res() res: Response) {
     const id = this.parseLessonId(lessonId);

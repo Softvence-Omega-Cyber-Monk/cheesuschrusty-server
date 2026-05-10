@@ -77,6 +77,26 @@ export class UserController {
   }
 
   @Get('me')
+  @ApiOperation({ 
+    summary: 'Get current user profile.',
+    description: `Returns the logged-in user's profile, including preferences and subscription status.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/users/me \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { id: 'uuid', email: 'user@example.com', name: 'Marco' }
+      }
+    }
+  })
   async getMyProfile(@Req() req: Request, @Res() res: Response) {
     const userId = (req.user as any).id;
 
@@ -226,8 +246,15 @@ export class UserController {
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER, Role.SUPORT_MANAGER, Role.USER)
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiOperation({
-    summary: 'Update user profile',
-    description: 'Update name, avatar, and notification preferences',
+    summary: 'Update user profile (multipart).',
+    description: `Update name, notification settings, and upload avatar.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X PATCH http://localhost:5001/api/v1/users/profile \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -F "name=Marco Rossi" \\
+    -F "avatar=@profile.jpg"
+    \`\`\``,
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -235,31 +262,12 @@ export class UserController {
       type: 'object',
       properties: {
         name: { type: 'string', example: 'Marco Rossi' },
-        weeklyUpdateEnabled: {
-          type: 'boolean',
-          example: true,
-          description: 'Receive weekly progress reports',
-        },
-        streakRemindersEnabled: {
-          type: 'boolean',
-          example: true,
-          description: 'Get alerts to maintain your streak',
-        },
-        achievementAlertsEnabled: {
-          type: 'boolean',
-          example: true,
-          description: 'Get notified when you earn badges',
-        },
-        dailyGoalMinutes: {
-          type: 'number',
-          example: 30,
-          description: 'Daily study goal in minutes',
-        },
+        weeklyUpdateEnabled: { type: 'boolean', example: true },
         avatar: { type: 'string', format: 'binary' },
       },
     },
   })
-  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully.' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(

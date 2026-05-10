@@ -10,7 +10,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import sendResponse from '../utils/sendResponse';
@@ -32,10 +32,18 @@ export class SupportChatController {
   @Post('message')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'Store a user message. If httpCode is 401, escalate it to admins by email and create a ticket.',
+    summary: 'Send a support chat message.',
+    description: `Submits a message to support. 401 codes trigger escalation.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/support-chat/message \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"message": "Help with login", "httpCode": 200}'
+    \`\`\``,
   })
   @ApiBody({ type: CreateSupportChatMessageDto })
+  @ApiResponse({ status: 201, description: 'Message stored.' })
   async createMessage(
     @Req() req: AuthenticatedRequest,
     @Body() dto: CreateSupportChatMessageDto,
@@ -61,8 +69,15 @@ export class SupportChatController {
   @Get('message')
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'Get all support chat messages for the logged in user.',
+    summary: 'Get chat history.',
+    description: `Retrieves all messages for the current user.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/support-chat/message \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
   })
+  @ApiResponse({ status: 200, description: 'History retrieved.' })
   async getMessages(@Req() req: AuthenticatedRequest, @Res() res: Response) {
     const data = await this.supportChatService.getMessageHistory(req.user.id);
 

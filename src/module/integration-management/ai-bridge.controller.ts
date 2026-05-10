@@ -9,7 +9,7 @@ import {
   ParseEnumPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CredentialProvider } from '@prisma/client';
 import { IntegrationManagementService } from './integration-management.service';
 import { AIBridgeGuard } from './ai-bridge.guard';
@@ -45,6 +45,20 @@ export class AIBridgeController {
     name: 'x-ai-bridge-secret',
     required: true,
     description: 'Shared secret for inter-server authentication',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Credentials retrieved successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        message: 'Credentials for OPENAI retrieved successfully.',
+        data: {
+          api_key: 'sk-proj-****abcd'
+        }
+      }
+    }
   })
   async getCredentials(
     @Param('provider', new ParseEnumPipe(CredentialProvider))

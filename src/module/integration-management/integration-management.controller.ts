@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { CredentialProvider, Role } from '@prisma/client';
 import { Response } from 'express';
-import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import sendResponse from '../utils/sendResponse';
 import { RecordIntegrationUsageDto } from './dto/record-integration-usage.dto';
@@ -43,6 +43,17 @@ export class IntegrationManagementController {
     \`\`\``,
   })
   @ApiBody({ type: RevealCredentialDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Credentials revealed.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { api_key: 'sk-proj-raw-key-here' }
+      }
+    }
+  })
   async revealCredential(
     @Param('provider', new ParseEnumPipe(CredentialProvider))
     provider: CredentialProvider,
@@ -74,6 +85,19 @@ export class IntegrationManagementController {
     -H "Authorization: Bearer YOUR_TOKEN"
     \`\`\``,
   })
+  @ApiResponse({
+    status: 200,
+    description: 'List of credentials retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: [
+          { provider: 'OPENAI', createdAt: '2026-05-09T...' }
+        ]
+      }
+    }
+  })
   async getCredentials(@Res() res: Response) {
     const data = await this.integrationManagementService.listCredentials();
 
@@ -98,6 +122,7 @@ export class IntegrationManagementController {
     \`\`\``,
   })
   @ApiBody({ type: UpsertIntegrationCredentialDto })
+  @ApiResponse({ status: 200, description: 'Credentials stored.' })
   async upsertCredential(
     @Param('provider', new ParseEnumPipe(CredentialProvider))
     provider: CredentialProvider,
@@ -130,6 +155,7 @@ export class IntegrationManagementController {
     \`\`\``,
   })
   @ApiBody({ type: RecordIntegrationUsageDto })
+  @ApiResponse({ status: 201, description: 'Usage recorded.' })
   async recordUsage(
     @Body() dto: RecordIntegrationUsageDto,
     @Res() res: Response,

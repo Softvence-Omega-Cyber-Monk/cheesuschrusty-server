@@ -156,4 +156,13 @@ export class CreateLessonContainerDto {
   @IsNotEmpty()
   @IsString()
   LESSON_TITLE: string;
+
+  @ApiProperty({
+    description: 'A custom seed to guide AI content generation (e.g., specific vocabulary or context).',
+    example: 'Focus on restaurant vocabulary and past tense verbs.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  GENERATION_SEED?: string;
 }

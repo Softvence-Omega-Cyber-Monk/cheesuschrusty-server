@@ -110,7 +110,7 @@ enum CredentialProvider {
   LEMONSQUEEZY
   CLOUDINARY
 }
-
+ 
 // ------------------------
 // USER
 // ------------------------
@@ -246,6 +246,7 @@ model Lesson {
   isPublished     Boolean     @default(false)
   createdAt       DateTime    @default(now())
   target_language String?
+  generation_seed String?
 
   questionSets     QuestionSet[]
   practiceSessions PracticeSession[] // ← ADD THIS LINE (for future use)

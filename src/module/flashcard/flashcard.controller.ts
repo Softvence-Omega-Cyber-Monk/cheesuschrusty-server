@@ -52,7 +52,26 @@ export class FlashcardController {
   // ====================================================================
   @Get('category/get')
   @Roles(Role.USER, Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get a category with all its cards.' })
+  @ApiOperation({ 
+    summary: 'Get a category with its cards.',
+    description: `Fetch specific category details and its associated flashcards.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET "http://localhost:5001/api/v1/flashcards/category/get?categoryId=1" \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Category loaded.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { id: 1, name: 'Travel', cards: [{ id: 12, frontText: 'Hello', backText: 'Ciao' }] }
+      }
+    }
+  })
   async getCategoryWithCards(
     @Res() res: Response,
     @Query() query: GetCategoryQueryDto,
@@ -259,9 +278,29 @@ export class FlashcardController {
    * Endpoint to create a new flashcard category.
    */
   @Post('category')
-  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER) // Assuming content creation is for Admins/Content Managers
-  @ApiOperation({ summary: 'ADMIN: Create a new flashcard category.' })
-  @ApiResponse({ status: 201, description: 'Category created successfully.' })
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
+  @ApiOperation({ 
+    summary: 'ADMIN: Create a new flashcard category.',
+    description: `Defines a new group for flashcards (e.g. "Travel", "Grammar").
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/flashcards/category \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"name": "Restaurant Phrases", "description": "Useful phrases for dining out"}'
+    \`\`\``
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Category created successfully.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        data: { id: 1, name: "Restaurant Phrases", slug: "restaurant-phrases" }
+      }
+    }
+  })
   async createCategory(@Res() res: Response, @Body() dto: CreateCategoryDto) {
     const category = await this.flashcardService.createCategory(dto);
 
@@ -277,9 +316,17 @@ export class FlashcardController {
    * Endpoint to create a single card.
    */
   @Post('card')
-  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER) // Assuming content creation is for Admins/Content Managers
+  @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
   @ApiOperation({
-    summary: 'ADMIN: Create a single flashcard within a category.',
+    summary: 'ADMIN: Create a single flashcard.',
+    description: `Add a new card to an existing category.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/flashcards/card \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"frontText": "Good morning", "backText": "Buongiorno", "categoryId": 1}'
+    \`\`\``
   })
   @ApiResponse({ status: 201, description: 'Card created successfully.' })
   @ApiResponse({ status: 404, description: 'Category not found.' })
@@ -304,12 +351,28 @@ export class FlashcardController {
   @Get('overview')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'USER: Get flashcard dashboard overview (categories, due cards, lifetime stats).',
+    summary: 'USER: Get flashcard dashboard overview.',
+    description: `Returns categories, due cards, and lifetime stats.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/flashcards/overview \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
     description: 'Returns the dashboard overview data.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: {
+          total_cards: 150,
+          due_today: 12,
+          categories: [{ id: 1, name: 'Travel', card_count: 50 }]
+        }
+      }
+    }
   })
   async getOverview(@Req() req: Request, @Res() res: Response) {
     // userId is guaranteed to exist by the authentication guard
@@ -331,13 +394,26 @@ export class FlashcardController {
   @Post('session/start')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'USER: Start a new session for a category or resume the most recent active session.',
+    summary: 'USER: Start/Resume a flashcard session.',
+    description: `Begins a study session for a category.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/flashcards/session/start \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"categoryId": 1}'
+    \`\`\``
   })
   @ApiResponse({
     status: 201,
-    description:
-      'Session started/resumed successfully, returns the first card.',
+    description: 'Session started/resumed.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        data: { sessionId: 50, currentCard: { id: 12, frontText: 'Hello' } }
+      }
+    }
   })
   @ApiResponse({ status: 404, description: 'Category not found.' })
   async startSession(
@@ -372,18 +448,28 @@ export class FlashcardController {
   @Post('session/grade')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'USER: Submit the grade for the current card and get the next card.',
+    summary: 'USER: Grade current card.',
+    description: `Submits a grade (1-5) for Spaced Repetition (SRL).
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/flashcards/session/grade \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"sessionId": 50, "cardId": 12, "grade": 4}'
+    \`\`\``
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Card graded successfully, returns the next card or completion status.',
+    description: 'Card graded.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { nextCard: { id: 13, frontText: 'Welcome' }, sessionFinished: false }
+      }
+    }
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Session not found or already finished.',
-  })
+  @ApiResponse({ status: 404, description: 'Session not found.' })
   async gradeCard(
     @Req() req: Request,
     @Res() res: Response,

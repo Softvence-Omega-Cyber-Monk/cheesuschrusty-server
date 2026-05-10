@@ -35,12 +35,30 @@ export class LessonController {
   @Get('grouped')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'USER: Fetch grouped lesson data by level, skill, task, and domain with optional filters.',
+    summary: 'USER: Fetch grouped lesson data by level, skill, task, and domain.',
+    description: `Returns a nested structure for the curriculum view.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/lessons/grouped \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
   })
   @ApiResponse({
     status: 200,
     description: 'Grouped lesson list retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: [
+          {
+            level_id: 'A1',
+            level_title: 'Beginner',
+            practises: [{ skill: 'reading', tasks: [] }]
+          }
+        ]
+      }
+    }
   })
   async findGroupedLessons(
     @Query() query: GetLessonsQueryDto,
@@ -60,14 +78,30 @@ export class LessonController {
   @Roles(Role.USER)
   @ApiOperation({
     summary:
-      'USER: Get the next unique or lowest-scored review lesson based on type and level.',
+      'USER: Get the next unique or lowest-scored review lesson based on type.',
+    description: `Retrieves a lesson the user hasn't seen yet or needs to review.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/lessons/next?type=READING \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
   })
   @ApiQuery({
     name: 'type',
     enum: LessonType,
     description: 'The type of lesson requested (e.g., READING).',
   })
-  @ApiResponse({ status: 200, description: 'Returns the lesson content JSON.' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns the lesson content JSON.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { id: 101, topic: 'Market', content: {} }
+      }
+    }
+  })
   @ApiResponse({
     status: 404,
     description: 'No lessons available for this type/level.',
@@ -98,34 +132,28 @@ export class LessonController {
   @Get('filter')
   @Roles(Role.USER)
   @ApiOperation({
-    summary:
-      'USER: Get the next lesson filtered by type, level, domain, and task ID.',
+    summary: 'USER: Get the next lesson filtered by type, level, domain, and task ID.',
+    description: `Precision fetching for specific curriculum items.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET "http://localhost:5001/api/v1/lessons/filter?type=READING&level=B1" \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``
   })
-  @ApiQuery({
-    name: 'type',
-    enum: LessonType,
-    description: 'The type of lesson requested (e.g., READING).',
-  })
-  @ApiQuery({
-    name: 'level',
-    required: true,
-    description:
-      'The proficiency level (e.g., A1, A2, B1, B2, C1, C2). Uppercase and lowercase inputs are both supported.',
-  })
-  @ApiQuery({
-    name: 'domain',
-    required: false,
-    description: 'Optional lesson domain filter (e.g., Business, Travel).',
-  })
-  @ApiQuery({
-    name: 'task_id',
-    required: false,
-    description: 'Optional task ID filter (e.g., L-01).',
-  })
+  @ApiQuery({ name: 'type', enum: LessonType })
+  @ApiQuery({ name: 'level', required: true })
+  @ApiQuery({ name: 'domain', required: false })
+  @ApiQuery({ name: 'task_id', required: false })
   @ApiResponse({
     status: 200,
-    description:
-      'Returns the lesson content JSON filtered by type, level, and optional domain/task ID.',
+    description: 'Returns the filtered lesson content.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { id: 101, topic: 'Market' }
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Missing required parameters.' })
   @ApiResponse({
@@ -166,6 +194,33 @@ export class LessonController {
 
   @Post(':id/complete')
   @Roles(Role.USER)
+  @ApiOperation({
+    summary: 'USER: Complete a lesson and record progress.',
+    description: `Submits accuracy and duration. Triggers XP calculation and badge checks.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/lessons/105/complete \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"accuracy": 85, "durationSeconds": 300, "xpEarned": 50}'
+    \`\`\``
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Progress saved successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: {
+          xpEarned: 50,
+          accuracy: 85,
+          skillImproved: 'reading',
+          message: 'Great job!'
+        }
+      }
+    }
+  })
   async completeLesson(
     @Param('id') lessonId: number,
     @Body() dto: CompleteLessonDto,

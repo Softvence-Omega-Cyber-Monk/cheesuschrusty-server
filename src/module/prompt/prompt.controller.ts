@@ -29,8 +29,13 @@ export class PromptController {
   @ApiConsumes('text/plain')
   @ApiOperation({
     summary: 'Update Master Prompt for Questions (Raw Text)',
-    description:
-      'Set or update the master prompt used for generating questions. Send the complete prompt as plain text in the request body. All characters (quotes, brackets, newlines, symbols) are preserved exactly as sent. Content-Type must be text/plain.',
+    description: `Set or update the master prompt used for generating questions. Send the complete prompt as plain text in the request body.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/prompts/master-prompt-questions \\
+    -H "Content-Type: text/plain" \\
+    --data-binary "Your complex multi-line prompt text goes here..."
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -178,8 +183,11 @@ export class PromptController {
   @Get('master-prompt-questions')
   @ApiOperation({
     summary: 'Get Current Master Prompt for Questions',
-    description:
-      'Retrieve the complete current master prompt used for generating questions. Returns the full prompt text exactly as it was stored, with all formatting and special characters preserved.',
+    description: `Retrieve the complete current master prompt used for generating questions.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/prompts/master-prompt-questions
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,

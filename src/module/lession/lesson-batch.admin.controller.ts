@@ -43,9 +43,40 @@ export class LessonBatchAdminController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create the lesson batch container' })
+  @ApiOperation({ 
+    summary: 'Create a new lesson batch container.',
+    description: `Generates multiple lessons in a single operation. Useful for bulk content creation.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/admin/lessons/batch \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{
+      "LESSON_TITLE": "Batch 1",
+      "topic": "Travel",
+      "variant_count": 5,
+      "SKILL": "READING",
+      "LEVEL_ID": "A1"
+    }'
+    \`\`\``
+  })
   @ApiBody({ type: CreateLessonBatchDto })
-  @ApiResponse({ status: 201, description: 'Lesson batch created successfully.' })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Lesson batch created successfully.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        message: 'Lesson batch created and published successfully.',
+        data: {
+          id: 201,
+          variant_count: 5,
+          LESSON_TITLE: 'Batch 1'
+        }
+      }
+    }
+  })
   async createLessonBatch(
     @Body() dto: CreateLessonBatchDto,
     @Res() res: Response,
