@@ -268,6 +268,7 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { AxiosInstance } from 'axios';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { SubscriptionPlan } from '@prisma/client';
 import { LemonSqueezyClient } from './lemon-squeezy.client';
@@ -279,7 +280,36 @@ type SubscriptionStatusString =
   | 'canceled'
   | 'canceled_at_period_end'
   | 'expired'
-  | string;
+  | (string & {});
+
+interface LemonAttributes {
+  url?: string;
+  customer_id?: string | number;
+  status?: string;
+  created_at?: string | Date;
+  renews_at?: string | Date | null;
+}
+
+interface LemonResponse<T> {
+  data: {
+    id: string | number;
+    attributes: T;
+  };
+}
+
+interface LemonWebhookPayload {
+  meta: {
+    event_name: string;
+    custom_data?: {
+      userId?: string;
+      planAlias?: string;
+    };
+  };
+  data: {
+    id: string | number;
+    attributes: LemonAttributes;
+  };
+}
 
 @Injectable()
 export class SubscriptionService {
@@ -331,6 +361,7 @@ export class SubscriptionService {
       );
     }
 
+    const credentials = await this.lemonClient.getCredentials();
     const lemon = await this.lemonClient.getClient();
     const res = await lemon.post('/checkouts', {
       data: {
@@ -348,7 +379,7 @@ export class SubscriptionService {
           store: {
             data: {
               type: 'stores',
-              id: process.env.LEMON_SQUEEZY_STORE_ID,
+              id: String(credentials.store_id),
             },
           },
           variant: {
@@ -361,7 +392,8 @@ export class SubscriptionService {
       },
     });
 
-    const checkoutData = res.data.data.attributes;
+    const checkoutData = (res.data as unknown as LemonResponse<LemonAttributes>)
+      .data.attributes;
     const lemonCustomerId = checkoutData.customer_id?.toString();
 
     if (lemonCustomerId && !user.lemonCustomerId) {
@@ -371,29 +403,32 @@ export class SubscriptionService {
       });
     }
 
-    return { checkoutUrl: checkoutData.url };
+    return { checkoutUrl: checkoutData.url as string };
   }
 
   /* ======================================================
      2️⃣ WEBHOOK HANDLER (SUBSCRIPTIONS + LIFETIME)
   ====================================================== */
-  async handleWebhook(rawBody: string, signature: string, payload: any) {
+  async handleWebhook(
+    rawBody: string,
+    signature: string,
+    payload: LemonWebhookPayload,
+  ) {
     if (!verifySignature(rawBody, signature)) {
       throw new Error('Invalid webhook signature');
     }
 
-    const event = payload.meta?.event_name;
-    const attrs = payload.data?.attributes;
+    const event = payload.meta.event_name;
+    const attrs = payload.data.attributes;
     this.logger.log(`📩 Webhook received: ${event}`);
 
-    let customData: any = null;
+    const customData = payload.meta.custom_data;
     let isLifetime = false;
 
     // ------------------------
     // SUBSCRIPTIONS
     // ------------------------
-    if (event?.startsWith('subscription_')) {
-      customData = payload.meta?.custom_data;
+    if (event.startsWith('subscription_')) {
       isLifetime = customData?.planAlias === 'PRO_LIFETIME';
     }
 
@@ -401,7 +436,6 @@ export class SubscriptionService {
     // ORDERS (for lifetime plans)
     // ------------------------
     if (event === 'order_created') {
-      customData = payload.meta?.custom_data;
       isLifetime = customData?.planAlias === 'PRO_LIFETIME';
     }
 
@@ -420,15 +454,17 @@ export class SubscriptionService {
       !isLifetime
     ) {
       const lemonSubscriptionId = payload.data.id.toString();
-      const lemonCustomerId = attrs.customer_id?.toString();
+      const lemonCustomerId = (
+        attrs.customer_id as string | number
+      )?.toString();
 
-      const periodStart = new Date(attrs.created_at);
+      const periodStart = new Date(attrs.created_at as string);
       const periodEnd = attrs.renews_at
-        ? new Date(attrs.renews_at)
+        ? new Date(attrs.renews_at as string)
         : periodStart;
 
       const dbStatus: SubscriptionStatusString =
-        attrs.status === 'on_trial' ? 'trialing' : attrs.status;
+        attrs.status === 'on_trial' ? 'trialing' : (attrs.status ?? 'active');
 
       if (dbStatus === 'trialing' || dbStatus === 'active') {
         await this.prisma.user.update({
@@ -468,7 +504,9 @@ export class SubscriptionService {
        Grant on order_created (ignore license_key_created)
     =============================== */
     if (event === 'order_created' && isLifetime) {
-      const lemonCustomerId = attrs?.customer_id?.toString();
+      const lemonCustomerId = (
+        attrs.customer_id as string | number
+      )?.toString();
 
       await this.prisma.subscription.upsert({
         where: { userId },
@@ -526,7 +564,7 @@ export class SubscriptionService {
     }
 
     if (sub.lemonSubscriptionId) {
-      const lemon = await this.lemonClient.getClient();
+      const lemon: AxiosInstance = await this.lemonClient.getClient();
       await lemon.delete(`/subscriptions/${sub.lemonSubscriptionId}`);
     }
 

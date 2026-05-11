@@ -12,7 +12,13 @@ import {
 } from '@nestjs/common';
 import { CredentialProvider, Role } from '@prisma/client';
 import { Response } from 'express';
-import { ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import sendResponse from '../utils/sendResponse';
 import { RecordIntegrationUsageDto } from './dto/record-integration-usage.dto';
@@ -32,8 +38,9 @@ export class IntegrationManagementController {
 
   @Post('credentials/:provider/reveal')
   @ApiOperation({
-    summary: 'Securely reveal raw credentials for a provider (requires password).',
-    description: `Requires step-up authentication. The admin must provide their current password. 
+    summary:
+      'Securely reveal raw credentials for a provider (requires password).',
+    description: `Requires step-up authentication. The admin must provide their current password.
     **Curl Example:**
     \`\`\`bash
     curl -X POST http://localhost:5001/api/v1/integration-management/credentials/OPENAI/reveal \\
@@ -50,15 +57,15 @@ export class IntegrationManagementController {
       example: {
         statusCode: 200,
         success: true,
-        data: { api_key: 'sk-proj-raw-key-here' }
-      }
-    }
+        data: { api_key: 'sk-proj-raw-key-here' },
+      },
+    },
   })
   async revealCredential(
     @Param('provider', new ParseEnumPipe(CredentialProvider))
     provider: CredentialProvider,
     @Body() dto: RevealCredentialDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
     @Res() res: Response,
   ) {
     const data = await this.integrationManagementService.revealCredentials(
@@ -70,7 +77,8 @@ export class IntegrationManagementController {
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'Credentials revealed successfully. This action has been logged.',
+      message:
+        'Credentials revealed successfully. This action has been logged.',
       data,
     });
   }
@@ -92,11 +100,9 @@ export class IntegrationManagementController {
       example: {
         statusCode: 200,
         success: true,
-        data: [
-          { provider: 'OPENAI', createdAt: '2026-05-09T...' }
-        ]
-      }
-    }
+        data: [{ provider: 'OPENAI', createdAt: '2026-05-09T...' }],
+      },
+    },
   })
   async getCredentials(@Res() res: Response) {
     const data = await this.integrationManagementService.listCredentials();
@@ -113,13 +119,74 @@ export class IntegrationManagementController {
   @ApiOperation({
     summary: 'Create or rotate encrypted credentials for a provider.',
     description: `Encrypts and stores service keys. Use the provider name in the URL.
-    **Curl Example (Cloudinary):**
-    \`\`\`bash
-    curl -X PUT http://localhost:5001/api/v1/integration-management/credentials/CLOUDINARY \\
-    -H "Authorization: Bearer YOUR_TOKEN" \\
-    -H "Content-Type: application/json" \\
-    -d '{"credentials": {"cloud_name": "test", "api_key": "123", "api_secret": "shh"}}'
-    \`\`\``,
+
+    ### Sample Payloads per Provider:
+
+    **OPENAI**
+    \`\`\`json
+    {
+      "credentials": {
+        "api_key": "sk-...",
+        "model_name": "gpt-4o",
+        "organization_id": "org-..."
+      }
+    }
+    \`\`\`
+
+    **GEMINI**
+    \`\`\`json
+    {
+      "credentials": {
+        "api_key": "AIza...",
+        "model_name": "gemini-1.5-pro"
+      }
+    }
+    \`\`\`
+
+    **GROK**
+    \`\`\`json
+    {
+      "credentials": {
+        "api_key": "xai-...",
+        "model_name": "grok-1"
+      }
+    }
+    \`\`\`
+
+    **STRIPE**
+    \`\`\`json
+    {
+      "credentials": {
+        "secret_key": "sk_test_...",
+        "publishable_key": "pk_test_...",
+        "webhook_secret": "whsec_..."
+      }
+    }
+    \`\`\`
+
+    **LEMONSQUEEZY**
+    \`\`\`json
+    {
+      "credentials": {
+        "api_key": "eyJ...",
+        "store_id": "259513",
+        "webhook_secret": "...",
+        "variant_id": "1164228"
+      }
+    }
+    \`\`\`
+
+    **CLOUDINARY**
+    \`\`\`json
+    {
+      "credentials": {
+        "cloud_name": "...",
+        "api_key": "...",
+        "api_secret": "..."
+      }
+    }
+    \`\`\`
+    `,
   })
   @ApiBody({ type: UpsertIntegrationCredentialDto })
   @ApiResponse({ status: 200, description: 'Credentials stored.' })
