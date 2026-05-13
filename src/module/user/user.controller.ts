@@ -32,6 +32,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateProfileDto } from './dto/update-user.dto';
 import { UpsertStudyPlanDto } from './dto/upsert-study-plan.dto';
 import { AdminEditUserDto } from './dto/admin-edit-user.dto';
+import { JwtPayload } from '../auth/strategy/jwt.strategy';
 
 @ApiTags('User Management')
 @Controller('users')
@@ -98,7 +99,7 @@ export class UserController {
     },
   })
   async getMyProfile(@Req() req: Request, @Res() res: Response) {
-    const userId = (req.user as any).id;
+    const userId = (req.user as JwtPayload).id;
 
     const profile = await this.userService.getUserById(userId);
 
@@ -265,12 +266,12 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(
-    @Req() req: any,
+    @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UpdateProfileDto,
     @Res() res: Response,
   ) {
-    const userId = req.user.id;
+    const userId = (req.user as JwtPayload).id;
     const result = await this.userService.updateProfile(userId, dto, file);
 
     return sendResponse(res, {
@@ -305,11 +306,11 @@ export class UserController {
   @ApiOperation({ summary: 'Create or update AI study plan' })
   @ApiResponse({ status: 200, description: 'Study plan saved' })
   async upsertStudyPlan(
-    @Req() req: any,
+    @Req() req: Request,
     @Body() dto: UpsertStudyPlanDto,
     @Res() res: Response,
   ) {
-    const userId = req.user.id;
+    const userId = (req.user as JwtPayload).id;
 
     const plan = await this.userService.upsertStudyPlan(userId, dto);
 
@@ -325,8 +326,8 @@ export class UserController {
   @Roles(Role.USER)
   @ApiOperation({ summary: 'Get current study plan' })
   @ApiResponse({ status: 200, description: 'Study plan retrieved' })
-  async getStudyPlan(@Req() req: any, @Res() res: Response) {
-    const userId = req.user.id;
+  async getStudyPlan(@Req() req: Request, @Res() res: Response) {
+    const userId = (req.user as JwtPayload).id;
 
     const plan = await this.userService.getStudyPlan(userId);
 
