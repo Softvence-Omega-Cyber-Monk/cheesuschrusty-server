@@ -71,11 +71,6 @@ enum TicketPriority {
   HIGH
 }
 
-enum AIProvider {
-  OPENAI
-  GROK
-  GEMINI
-}
 
 enum SkillArea {
   reading
@@ -109,6 +104,7 @@ enum CredentialProvider {
   STRIPE
   LEMONSQUEEZY
   CLOUDINARY
+  OPENROUTER
 }
  
 // ------------------------
@@ -230,7 +226,7 @@ model Lesson {
   task_id         String?
   topic           String?
   skill           LessonType?
-  provider        AIProvider?
+  provider        String?
   domain          String?
   is_pro          Boolean     @default(false)
   level           String?

@@ -55,10 +55,10 @@ export class AIBridgeController {
         success: true,
         message: 'Credentials for OPENAI retrieved successfully.',
         data: {
-          api_key: 'sk-proj-****abcd'
-        }
-      }
-    }
+          api_key: 'sk-proj-****abcd',
+        },
+      },
+    },
   })
   async getCredentials(
     @Param('provider', new ParseEnumPipe(CredentialProvider))
@@ -72,9 +72,8 @@ export class AIBridgeController {
       );
     }
 
-    const data = await this.integrationManagementService.getDecryptedCredential(
-      provider,
-    );
+    const data =
+      await this.integrationManagementService.getDecryptedCredential(provider);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,

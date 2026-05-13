@@ -1,5 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, MemoryHealthIndicator, DiskHealthIndicator } from '@nestjs/terminus';
+import {
+  HealthCheck,
+  HealthCheckService,
+  MemoryHealthIndicator,
+  DiskHealthIndicator,
+} from '@nestjs/terminus';
 import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { PrismaHealthIndicator } from './prisma.health-indicator';
 import { ExternalServicesHealthIndicator } from './external-services.health-indicator';
@@ -34,9 +39,9 @@ export class HealthController {
       example: {
         status: 'ok',
         timestamp: '2026-05-09T...',
-        services: { database: { status: 'up' }, memory_heap: { status: 'up' } }
-      }
-    }
+        services: { database: { status: 'up' }, memory_heap: { status: 'up' } },
+      },
+    },
   })
   async check() {
     // 1. Critical Checks (Will trigger 503 if they fail)
@@ -51,10 +56,21 @@ export class HealthController {
     }
 
     // 2. Non-Critical Checks (Always returns 200, but shows status)
-    const storage = await this.disk.checkStorage('storage', { thresholdPercent: 0.99, path: '/' }).catch(e => e.getResponse());
-    const stripe = await this.externalHealth.checkService('stripe', 'STRIPE' as any);
-    const cloudinary = await this.externalHealth.checkService('cloudinary', 'CLOUDINARY' as any);
-    const openai = await this.externalHealth.checkService('openai', 'OPENAI' as any);
+    const storage = await this.disk
+      .checkStorage('storage', { thresholdPercent: 0.99, path: '/' })
+      .catch((e) => e.getResponse());
+    const stripe = await this.externalHealth.checkService(
+      'stripe',
+      'STRIPE' as any,
+    );
+    const cloudinary = await this.externalHealth.checkService(
+      'cloudinary',
+      'CLOUDINARY' as any,
+    );
+    const openai = await this.externalHealth.checkService(
+      'openai',
+      'OPENAI' as any,
+    );
 
     // 3. Clean, Non-Redundant Response
     const allServices = {

@@ -77,14 +77,14 @@ export class UserController {
   }
 
   @Get('me')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current user profile.',
     description: `Returns the logged-in user's profile, including preferences and subscription status.
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/users/me \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -93,9 +93,9 @@ export class UserController {
       example: {
         statusCode: 200,
         success: true,
-        data: { id: 'uuid', email: 'user@example.com', name: 'Marco' }
-      }
-    }
+        data: { id: 'uuid', email: 'user@example.com', name: 'Marco' },
+      },
+    },
   })
   async getMyProfile(@Req() req: Request, @Res() res: Response) {
     const userId = (req.user as any).id;
@@ -155,14 +155,8 @@ export class UserController {
     @Res() res: Response,
     @Param('id') id: string,
     @Body() dto: AdminEditUserDto,
-    @Req() req: Request,
   ) {
-    const adminRole = req.user!.role as Role;
-    const updatedUser = await this.userService.adminEditUser(
-      id,
-      dto,
-      adminRole,
-    );
+    const updatedUser = await this.userService.adminEditUser(id, dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,

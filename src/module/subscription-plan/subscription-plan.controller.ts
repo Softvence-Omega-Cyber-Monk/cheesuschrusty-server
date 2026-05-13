@@ -42,7 +42,7 @@ export class SubscriptionPlansController {
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/plans
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -51,9 +51,11 @@ export class SubscriptionPlansController {
       example: {
         statusCode: 200,
         success: true,
-        data: [{ alias: 'PRO_MONTHLY', price: 9.99, stripePriceId: 'price_...' }]
-      }
-    }
+        data: [
+          { alias: 'PRO_MONTHLY', price: 9.99, stripePriceId: 'price_...' },
+        ],
+      },
+    },
   })
   async getAllActivePlans(@Res() res: Response) {
     // We pass true to get only plans marked as isActive
@@ -83,7 +85,7 @@ export class SubscriptionPlansController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"price": 12.99}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiParam({ name: 'alias', description: 'Plan alias (e.g., PRO_MONTHLY)' })
   @ApiBody({ type: UpdatePlanDto })

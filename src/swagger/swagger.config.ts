@@ -16,6 +16,15 @@ export const swaggerConfig = new DocumentBuilder()
     },
     'auth',
   )
+  .addApiKey(
+    {
+      type: 'apiKey',
+      name: 'x-sync-secret',
+      in: 'header',
+      description: 'Shared secret for server-to-server synchronization',
+    },
+    'sync-secret',
+  )
   .addSecurityRequirements({
     auth: [],
   })

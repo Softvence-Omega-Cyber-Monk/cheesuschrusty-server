@@ -50,19 +50,19 @@ export class TicketController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"subject": "Subscription Issue", "message": "I was charged twice..."}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiBody({ type: CreateTicketDto })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Ticket created successfully.',
     schema: {
       example: {
         statusCode: 201,
         success: true,
-        data: { id: 'uuid', subject: 'Subscription Issue', status: 'OPEN' }
-      }
-    }
+        data: { id: 'uuid', subject: 'Subscription Issue', status: 'OPEN' },
+      },
+    },
   })
   async createTicket(
     @Req() req: Request,
@@ -196,7 +196,7 @@ export class TicketController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"message": "Thank you for the update."}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiBody({ type: AddTicketMessageDto })
   @ApiParam({ name: 'id', description: 'Ticket ID' })

@@ -39,7 +39,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/register \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com", "password": "Password123!", "name": "John Doe"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 201,
@@ -49,9 +49,9 @@ export class AuthController {
         statusCode: 201,
         success: true,
         message: 'Registration successful. Please verify your email.',
-        data: { email: 'user@example.com' }
-      }
-    }
+        data: { email: 'user@example.com' },
+      },
+    },
   })
   async register(@Body() dto: RegisterDto, @Res() res: Response) {
     const result = await this.authService.register(dto);
@@ -74,7 +74,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/verify-email \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com", "code": "123456"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Email verified.' })
   async verifyEmail(@Body() dto: VerifyResetCodeDto, @Res() res: Response) {
@@ -98,7 +98,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/resend-verification \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Code sent.' })
   async resendVerification(
@@ -125,7 +125,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/login \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com", "password": "Password123!"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -138,10 +138,10 @@ export class AuthController {
         data: {
           accessToken: 'eyJhbGc...',
           refreshToken: 'def456...',
-          user: { id: 'uuid', email: 'user@example.com', role: 'USER' }
-        }
-      }
-    }
+          user: { id: 'uuid', email: 'user@example.com', role: 'USER' },
+        },
+      },
+    },
   })
   async login(@Body() dto: LoginDto, @Res() res: Response) {
     const result = await this.authService.login(dto);
@@ -164,7 +164,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/refresh-token \\
     -H "Content-Type: application/json" \\
     -d '{"refreshToken": "YOUR_REFRESH_TOKEN"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -173,9 +173,9 @@ export class AuthController {
       example: {
         statusCode: 200,
         success: true,
-        data: { accessToken: 'new-at...', refreshToken: 'new-rt...' }
-      }
-    }
+        data: { accessToken: 'new-at...', refreshToken: 'new-rt...' },
+      },
+    },
   })
   async refreshToken(@Body() dto: RefreshTokenDto, @Res() res: Response) {
     const result = await this.authService.refreshTokens(dto.refreshToken);
@@ -214,7 +214,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/request-reset-code \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Reset code sent.' })
   async requestResetCode(
@@ -240,7 +240,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/verify-reset-code \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com", "code": "123456"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Code verified.' })
   async verifyResetCode(@Body() dto: VerifyResetCodeDto, @Res() res: Response) {
@@ -263,7 +263,7 @@ export class AuthController {
     curl -X POST http://localhost:5001/api/v1/auth/reset-password \\
     -H "Content-Type: application/json" \\
     -d '{"email": "user@example.com", "password": "NewPassword123!", "code": "123456"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Password reset successful.' })
   async resetPassword(@Body() dto: ResetPasswordDto, @Res() res: Response) {

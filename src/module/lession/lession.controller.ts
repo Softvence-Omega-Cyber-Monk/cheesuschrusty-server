@@ -35,13 +35,14 @@ export class LessonController {
   @Get('grouped')
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'USER: Fetch grouped lesson data by level, skill, task, and domain.',
+    summary:
+      'USER: Fetch grouped lesson data by level, skill, task, and domain.',
     description: `Returns a nested structure for the curriculum view.
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/lessons/grouped \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -54,11 +55,11 @@ export class LessonController {
           {
             level_id: 'A1',
             level_title: 'Beginner',
-            practises: [{ skill: 'reading', tasks: [] }]
-          }
-        ]
-      }
-    }
+            practises: [{ skill: 'reading', tasks: [] }],
+          },
+        ],
+      },
+    },
   })
   async findGroupedLessons(
     @Query() query: GetLessonsQueryDto,
@@ -84,23 +85,23 @@ export class LessonController {
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/lessons/next?type=READING \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiQuery({
     name: 'type',
     enum: LessonType,
     description: 'The type of lesson requested (e.g., READING).',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Returns the lesson content JSON.',
     schema: {
       example: {
         statusCode: 200,
         success: true,
-        data: { id: 101, topic: 'Market', content: {} }
-      }
-    }
+        data: { id: 101, topic: 'Market', content: {} },
+      },
+    },
   })
   @ApiResponse({
     status: 404,
@@ -132,13 +133,14 @@ export class LessonController {
   @Get('filter')
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'USER: Get the next lesson filtered by type, level, domain, and task ID.',
+    summary:
+      'USER: Get the next lesson filtered by type, level, domain, and task ID.',
     description: `Precision fetching for specific curriculum items.
     **Curl Example:**
     \`\`\`bash
     curl -X GET "http://localhost:5001/api/v1/lessons/filter?type=READING&level=B1" \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiQuery({ name: 'type', enum: LessonType })
   @ApiQuery({ name: 'level', required: true })
@@ -151,9 +153,9 @@ export class LessonController {
       example: {
         statusCode: 200,
         success: true,
-        data: { id: 101, topic: 'Market' }
-      }
-    }
+        data: { id: 101, topic: 'Market' },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Missing required parameters.' })
   @ApiResponse({
@@ -203,7 +205,7 @@ export class LessonController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"accuracy": 85, "durationSeconds": 300, "xpEarned": 50}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -216,10 +218,10 @@ export class LessonController {
           xpEarned: 50,
           accuracy: 85,
           skillImproved: 'reading',
-          message: 'Great job!'
-        }
-      }
-    }
+          message: 'Great job!',
+        },
+      },
+    },
   })
   async completeLesson(
     @Param('id') lessonId: number,
@@ -244,6 +246,7 @@ export class LessonController {
       LISTENING: 'listening',
       WRITING: 'writing',
       SPEAKING: 'speaking',
+      GRAMMAR: 'reading',
     };
 
     const skillArea = skillAreaMap[lesson.skill || 'READING'];

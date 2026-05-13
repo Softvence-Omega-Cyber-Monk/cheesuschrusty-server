@@ -1,5 +1,9 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  UploadApiResponse,
+  UploadApiErrorResponse,
+} from 'cloudinary';
 import { DynamicConfigService } from 'src/module/integration-management/dynamic-config.service';
 import { CredentialProvider } from '@prisma/client';
 
@@ -10,8 +14,10 @@ export class CloudinaryService {
   constructor(private readonly dynamicConfig: DynamicConfigService) {}
 
   private async getClient() {
-    const credentials = await this.dynamicConfig.getCredentials(CredentialProvider.CLOUDINARY);
-    
+    const credentials = await this.dynamicConfig.getCredentials(
+      CredentialProvider.CLOUDINARY,
+    );
+
     if (!credentials || !credentials.cloud_name) {
       throw new BadRequestException('Cloudinary is not configured.');
     }

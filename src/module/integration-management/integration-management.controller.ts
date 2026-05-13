@@ -9,6 +9,8 @@ import {
   Query,
   Param,
   Res,
+  UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { CredentialProvider, Role } from '@prisma/client';
 import { Response } from 'express';
@@ -17,6 +19,7 @@ import {
   ApiOperation,
   ApiQuery,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -27,6 +30,8 @@ import { IntegrationManagementService } from './integration-management.service';
 
 import { RevealCredentialDto } from './dto/reveal-credential.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorators';
+import { CredentialSyncGuard } from './guards/credential-sync.guard';
 
 @ApiTags('Integration Management')
 @Controller('integration-management')
@@ -79,7 +84,25 @@ export class IntegrationManagementController {
       success: true,
       message:
         'Credentials revealed successfully. This action has been logged.',
-      data,
+      data: {
+        provider: provider.toLowerCase(),
+        ...data,
+      },
+    });
+  }
+
+  @Get('available-ai-providers')
+  @ApiOperation({ summary: 'Discover active AI providers.' })
+  @ApiResponse({ status: 200, description: 'List of active AI slugs.' })
+  async getActiveAIProviders(@Res() res: Response) {
+    const providers =
+      await this.integrationManagementService.getActiveAIProviders();
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Active AI providers discovered.',
+      data: providers.map((p) => p.toLowerCase()),
     });
   }
 
@@ -111,7 +134,10 @@ export class IntegrationManagementController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Integration credentials retrieved successfully.',
-      data,
+      data: data.map((item) => ({
+        ...item,
+        provider: item.provider.toLowerCase(),
+      })),
     });
   }
 
@@ -300,6 +326,65 @@ export class IntegrationManagementController {
       success: true,
       message: 'Integration usage summary retrieved successfully.',
       data,
+    });
+  }
+
+  @Public()
+  @UseGuards(CredentialSyncGuard)
+  @Roles() // Override class-level roles
+  @ApiSecurity('sync-secret')
+  @Get('credential/:provider')
+  @ApiOperation({
+    summary: 'External synchronization of credentials for another server.',
+    description: `Allows a remote application to fetch raw credentials using a shared secret.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/integration-management/credential/OPENAI \\
+    -H "X-Sync-Secret: your-shared-secret"
+    \`\`\``,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Credentials retrieved successfully.',
+  })
+  async fetchCredential(
+    @Param('provider')
+    provider: string,
+    @Res() res: Response,
+  ) {
+    const normalizedProvider = provider.toUpperCase() as CredentialProvider;
+
+    if (!Object.values(CredentialProvider).includes(normalizedProvider)) {
+      throw new NotFoundException(`Invalid provider: ${provider}`);
+    }
+
+    const data =
+      await this.integrationManagementService.getDecryptedCredential(
+        normalizedProvider,
+      );
+
+    if (!data) {
+      throw new NotFoundException(`Credentials not found for ${provider}`);
+    }
+
+    // Log the credential fetch event
+    await this.integrationManagementService.recordUsage({
+      provider: normalizedProvider,
+      operation: 'CREDENTIAL_SYNC',
+      metadata: {
+        timestamp: new Date(),
+        type: 'external_server_request',
+      },
+    });
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: `Credentials for ${normalizedProvider} retrieved successfully.`,
+      data: {
+        provider: normalizedProvider.toLowerCase(),
+        ...data,
+      },
     });
   }
 }

@@ -21,7 +21,7 @@ export class LeaderboardController {
     \`\`\`bash
     curl -X GET "http://localhost:5001/api/v1/leaderboard/pro?period=weekly" \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -32,10 +32,10 @@ export class LeaderboardController {
         success: true,
         data: {
           rankings: [{ rank: 1, name: 'Luigi', xp: 1200 }],
-          userRank: { rank: 45, xp: 350 }
-        }
-      }
-    }
+          userRank: { rank: 45, xp: 350 },
+        },
+      },
+    },
   })
   async getProLeaderboard(
     @Req() req: any,

@@ -11,7 +11,13 @@ import {
 import { Response } from 'express';
 
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { BrandingSettingsService } from './branding-settings.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
@@ -25,14 +31,14 @@ export class BrandingSettingsController {
 
   @Get()
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Retrieve current branding settings.',
     description: `Returns the site name, primary colors, and asset URLs.
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/settings/branding \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -41,9 +47,9 @@ export class BrandingSettingsController {
       example: {
         statusCode: 200,
         success: true,
-        data: { siteName: 'ItalianMaster', primaryColor: '#FF0000' }
-      }
-    }
+        data: { siteName: 'ItalianMaster', primaryColor: '#FF0000' },
+      },
+    },
   })
   async getBranding(@Res() res: Response) {
     const branding = await this.brandingService.getBranding();

@@ -17,7 +17,7 @@ export class PlatformSettingsController {
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/platform-settings
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 200, description: 'Settings retrieved successfully.' })
   async getSettings(@Res() res: Response) {
@@ -39,7 +39,7 @@ export class PlatformSettingsController {
     curl -X PUT http://localhost:5001/api/v1/platform-settings \\
     -H "Content-Type: application/json" \\
     -d '{"isMaintenanceMode": false, "version": "1.0.5"}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiBody({ type: UpdatePlatformSettingsDto })
   @ApiResponse({ status: 200, description: 'Settings updated successfully.' })

@@ -43,7 +43,7 @@ export class LessonBatchAdminController {
   }
 
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a new lesson batch container.',
     description: `Generates multiple lessons in a single operation. Useful for bulk content creation.
     **Curl Example:**
@@ -58,11 +58,11 @@ export class LessonBatchAdminController {
       "SKILL": "READING",
       "LEVEL_ID": "A1"
     }'
-    \`\`\``
+    \`\`\``,
   })
   @ApiBody({ type: CreateLessonBatchDto })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Lesson batch created successfully.',
     schema: {
       example: {
@@ -72,10 +72,10 @@ export class LessonBatchAdminController {
         data: {
           id: 201,
           variant_count: 5,
-          LESSON_TITLE: 'Batch 1'
-        }
-      }
-    }
+          LESSON_TITLE: 'Batch 1',
+        },
+      },
+    },
   })
   async createLessonBatch(
     @Body() dto: CreateLessonBatchDto,
@@ -172,10 +172,7 @@ export class LessonBatchAdminController {
     description: 'Lesson batch deleted successfully (No Content).',
   })
   @ApiResponse({ status: 404, description: 'Lesson batch not found.' })
-  async deleteLessonBatch(
-    @Param('id') lessonId: string,
-    @Res() res: Response,
-  ) {
+  async deleteLessonBatch(@Param('id') lessonId: string, @Res() res: Response) {
     const id = this.parseLessonId(lessonId);
 
     await this.lessonService.deleteLesson(id);

@@ -21,7 +21,7 @@ export class AnalyticsController {
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/analytics/advanced \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -33,10 +33,10 @@ export class AnalyticsController {
         data: {
           weekly_stats: { xp: 350, lessons: 12 },
           streak: { current: 5, longest: 10 },
-          skill_progress: { reading: 85, grammar: 40 }
-        }
-      }
-    }
+          skill_progress: { reading: 85, grammar: 40 },
+        },
+      },
+    },
   })
   async getAdvancedAnalytics(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;
@@ -54,14 +54,14 @@ export class AnalyticsController {
   // In AnalyticsController
   @Get('overview')
   @Roles(Role.USER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get dashboard overview for free/pro users.',
     description: `Provides a snapshot of the user's current progress and available content.
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/analytics/overview \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -70,9 +70,9 @@ export class AnalyticsController {
       example: {
         statusCode: 200,
         success: true,
-        data: { currentLevel: 'A1', completionPercentage: 45 }
-      }
-    }
+        data: { currentLevel: 'A1', completionPercentage: 45 },
+      },
+    },
   })
   async getOverviewDashboard(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;
@@ -88,14 +88,14 @@ export class AnalyticsController {
 
   @Get('practice')
   @Roles(Role.USER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get practice dashboard data.',
     description: `Retrieves data for the practice mode, including recent mistakes and review items.
     **Curl Example:**
     \`\`\`bash
     curl -X GET http://localhost:5001/api/v1/analytics/practice \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -104,9 +104,9 @@ export class AnalyticsController {
       example: {
         statusCode: 200,
         success: true,
-        data: { itemsToReview: 5, masteryScore: 78 }
-      }
-    }
+        data: { itemsToReview: 5, masteryScore: 78 },
+      },
+    },
   })
   async getPracticeDashboard(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;

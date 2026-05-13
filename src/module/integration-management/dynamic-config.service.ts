@@ -59,6 +59,11 @@ export class DynamicConfigService {
           api_key: process.env.CLOUDINARY_API_KEY,
           api_secret: process.env.CLOUDINARY_API_SECRET,
         };
+      case CredentialProvider.OPENROUTER:
+        return {
+          api_key: process.env.OPENROUTER_API_KEY,
+          model_name: process.env.OPENROUTER_MODEL || 'anthropic/claude-3-opus',
+        };
       default:
         return {};
     }

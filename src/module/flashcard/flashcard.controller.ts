@@ -52,14 +52,14 @@ export class FlashcardController {
   // ====================================================================
   @Get('category/get')
   @Roles(Role.USER, Role.CONTENT_MANAGER, Role.SUPER_ADMIN)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get a category with its cards.',
     description: `Fetch specific category details and its associated flashcards.
     **Curl Example:**
     \`\`\`bash
     curl -X GET "http://localhost:5001/api/v1/flashcards/category/get?categoryId=1" \\
     -H "Authorization: Bearer YOUR_TOKEN"
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -68,9 +68,13 @@ export class FlashcardController {
       example: {
         statusCode: 200,
         success: true,
-        data: { id: 1, name: 'Travel', cards: [{ id: 12, frontText: 'Hello', backText: 'Ciao' }] }
-      }
-    }
+        data: {
+          id: 1,
+          name: 'Travel',
+          cards: [{ id: 12, frontText: 'Hello', backText: 'Ciao' }],
+        },
+      },
+    },
   })
   async getCategoryWithCards(
     @Res() res: Response,
@@ -279,7 +283,7 @@ export class FlashcardController {
    */
   @Post('category')
   @Roles(Role.SUPER_ADMIN, Role.CONTENT_MANAGER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'ADMIN: Create a new flashcard category.',
     description: `Defines a new group for flashcards (e.g. "Travel", "Grammar").
     **Curl Example:**
@@ -288,18 +292,18 @@ export class FlashcardController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"name": "Restaurant Phrases", "description": "Useful phrases for dining out"}'
-    \`\`\``
+    \`\`\``,
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Category created successfully.',
     schema: {
       example: {
         statusCode: 201,
         success: true,
-        data: { id: 1, name: "Restaurant Phrases", slug: "restaurant-phrases" }
-      }
-    }
+        data: { id: 1, name: 'Restaurant Phrases', slug: 'restaurant-phrases' },
+      },
+    },
   })
   async createCategory(@Res() res: Response, @Body() dto: CreateCategoryDto) {
     const category = await this.flashcardService.createCategory(dto);
@@ -326,7 +330,7 @@ export class FlashcardController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"frontText": "Good morning", "backText": "Buongiorno", "categoryId": 1}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({ status: 201, description: 'Card created successfully.' })
   @ApiResponse({ status: 404, description: 'Category not found.' })
@@ -369,10 +373,10 @@ export class FlashcardController {
         data: {
           total_cards: 150,
           due_today: 12,
-          categories: [{ id: 1, name: 'Travel', card_count: 50 }]
-        }
-      }
-    }
+          categories: [{ id: 1, name: 'Travel', card_count: 50 }],
+        },
+      },
+    },
   })
   async getOverview(@Req() req: Request, @Res() res: Response) {
     // userId is guaranteed to exist by the authentication guard
@@ -402,7 +406,7 @@ export class FlashcardController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"categoryId": 1}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 201,
@@ -411,9 +415,9 @@ export class FlashcardController {
       example: {
         statusCode: 201,
         success: true,
-        data: { sessionId: 50, currentCard: { id: 12, frontText: 'Hello' } }
-      }
-    }
+        data: { sessionId: 50, currentCard: { id: 12, frontText: 'Hello' } },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Category not found.' })
   async startSession(
@@ -456,7 +460,7 @@ export class FlashcardController {
     -H "Authorization: Bearer YOUR_TOKEN" \\
     -H "Content-Type: application/json" \\
     -d '{"sessionId": 50, "cardId": 12, "grade": 4}'
-    \`\`\``
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
@@ -465,9 +469,12 @@ export class FlashcardController {
       example: {
         statusCode: 200,
         success: true,
-        data: { nextCard: { id: 13, frontText: 'Welcome' }, sessionFinished: false }
-      }
-    }
+        data: {
+          nextCard: { id: 13, frontText: 'Welcome' },
+          sessionFinished: false,
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Session not found.' })
   async gradeCard(

@@ -50,8 +50,12 @@ export class IntegrationManagementService {
     // 2. Verify Password (Step-up authentication)
     const isMatch = await bcrypt.compare(password, user.password || '');
     if (!isMatch) {
-      this.logger.warn(`Failed credential reveal attempt for ${provider} by User ${userId}`);
-      throw new UnauthorizedException('Invalid password for credential reveal.');
+      this.logger.warn(
+        `Failed credential reveal attempt for ${provider} by User ${userId}`,
+      );
+      throw new UnauthorizedException(
+        'Invalid password for credential reveal.',
+      );
     }
 
     // 3. Get Credentials
@@ -88,7 +92,9 @@ export class IntegrationManagementService {
       },
     });
 
-    this.logger.log(`Sensitive credentials for ${provider} revealed to Admin ${userId}`);
+    this.logger.log(
+      `Sensitive credentials for ${provider} revealed to Admin ${userId}`,
+    );
 
     return decrypted;
   }
@@ -180,6 +186,31 @@ export class IntegrationManagementService {
       this.logger.error(`Failed to decrypt credentials for ${provider}`, error);
       return null;
     }
+  }
+
+  /**
+   * Retrieves a list of all providers that have active credentials
+   * and are traditionally used for AI operations.
+   */
+  async getActiveAIProviders() {
+    const aiSlugs = [
+      CredentialProvider.OPENAI,
+      CredentialProvider.GEMINI,
+      CredentialProvider.GROK,
+      CredentialProvider.OPENROUTER,
+    ];
+
+    const activeCredentials = await this.prisma.integrationCredential.findMany({
+      where: {
+        provider: { in: aiSlugs },
+        isActive: true,
+      },
+      select: {
+        provider: true,
+      },
+    });
+
+    return activeCredentials.map((c) => c.provider);
   }
 
   async recordUsage(dto: RecordIntegrationUsageDto) {

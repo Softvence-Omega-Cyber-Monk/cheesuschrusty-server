@@ -14,20 +14,33 @@ async function bootstrap() {
     bodyParser: false, // Disable default body parser to configure custom parsers
   });
 
+  // Global Prefix
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health'],
+  });
+
   // CORS Configuration
-  const corsOptions = {
+  app.enableCors({
     origin: [
       'http://localhost:5173',
+      'http://127.0.0.1:5173',
       'http://localhost:5174',
-      'https://cheesuschrustyy.netlify.app',
+      'http://127.0.0.1:5174',
       'http://72.62.26.34:4173',
+      'https://cheesuschrustyy.netlify.app',
       'https://cheescusty.netlify.app',
       'https://prontocorso.com',
     ],
     credentials: true,
-  };
-
-  app.enableCors(corsOptions);
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+    ],
+  });
 
   // 1. Raw body parser for webhook (Stripe, etc.)
   app.use(

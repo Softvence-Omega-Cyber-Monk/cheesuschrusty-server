@@ -71,11 +71,11 @@ export class QuestionSetController {
           id: 45,
           lessonId: 105,
           prompt: 'Create reading exercises...',
-          content: { "text": "L'Italia è...", "questions": [] },
-          createdAt: '2026-05-09T10:00:00Z'
-        }
-      }
-    }
+          content: { text: "L'Italia è...", questions: [] },
+          createdAt: '2026-05-09T10:00:00Z',
+        },
+      },
+    },
   })
   async createOrUpdateQuestionSet(
     @Body() dto: CreateQuestionSetDto,
@@ -117,10 +117,10 @@ export class QuestionSetController {
         data: {
           id: 45,
           lessonId: 105,
-          content: { "text": "L'Italia è...", "questions": [] }
-        }
-      }
-    }
+          content: { text: "L'Italia è...", questions: [] },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'QuestionSet not found.' })
   async getQuestionSet(

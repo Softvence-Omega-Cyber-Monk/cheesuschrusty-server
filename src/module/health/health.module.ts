@@ -7,11 +7,7 @@ import { ExternalServicesHealthIndicator } from './external-services.health-indi
 import { IntegrationManagementModule } from '../integration-management/integration-management.module';
 
 @Module({
-  imports: [
-    TerminusModule,
-    HttpModule,
-    IntegrationManagementModule,
-  ],
+  imports: [TerminusModule, HttpModule, IntegrationManagementModule],
   controllers: [HealthController],
   providers: [PrismaHealthIndicator, ExternalServicesHealthIndicator],
 })

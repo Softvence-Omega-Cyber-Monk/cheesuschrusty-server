@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { FlashcardOverviewResponseDto } from './dto/flashcard.overview.dto';
 import { GradeCardDto, StartSessionDto } from './dto/flashcard.grading.dto';
 import {
@@ -339,7 +340,14 @@ export class FlashcardService {
     }
 
     if (cardIdsForSession.length === 0) {
-      throw new NotFoundException('No cards available to study');
+      if (category.cards.length === 0) {
+        throw new NotFoundException(
+          'This category has no cards yet. Add some cards to start studying!',
+        );
+      }
+      throw new NotFoundException(
+        "You've studied all cards in this category for now! Come back later when they are due for review.",
+      );
     }
 
     const initialSessionData: SessionData = {
@@ -352,7 +360,7 @@ export class FlashcardService {
       data: {
         userId,
         categoryName: category.title,
-        sessionData: initialSessionData as any,
+        sessionData: initialSessionData as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
         totalTimeSeconds: 0,
       },
@@ -425,7 +433,8 @@ export class FlashcardService {
       throw new BadRequestException('Wrong card order');
     }
 
-    let { remainingCardIds, correctCount, incorrectCount } = sessionData;
+    const { remainingCardIds } = sessionData;
+    let { correctCount, incorrectCount } = sessionData;
     const isCorrect = dto.grade >= 2;
     if (isCorrect) correctCount++;
     else incorrectCount++;
@@ -445,7 +454,7 @@ export class FlashcardService {
             remainingCardIds,
             correctCount,
             incorrectCount,
-          } as any,
+          } as unknown as Prisma.InputJsonValue,
           status: 'FINISHED',
           dateCompleted: new Date(),
           totalTimeSeconds: dto.currentTimeSeconds ?? session.totalTimeSeconds,
@@ -473,7 +482,7 @@ export class FlashcardService {
             remainingCardIds,
             correctCount,
             incorrectCount,
-          } as any,
+          } as unknown as Prisma.InputJsonValue,
         },
       });
     }
