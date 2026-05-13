@@ -5,16 +5,18 @@ WORKDIR /app
 # 🔥 install curl and build tools for native modules (like bcrypt)
 RUN apk add --no-cache curl python3 make g++
 
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 
-RUN npm install --frozen-lockfile || npm install
-RUN npx prisma generate
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
 EXPOSE 5001
 
-CMD ["npm", "run", "start"]
+CMD ["pnpm", "run", "start"]
