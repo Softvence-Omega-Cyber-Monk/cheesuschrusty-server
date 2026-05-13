@@ -10,7 +10,7 @@ RUN npm install -g pnpm@9
 
 ENV PNPM_ONLY_BUILT_DEPENDENCIES_ALLOW_ALL=true
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc prisma.config.ts tsconfig.json ./
 COPY prisma ./prisma
 
 RUN pnpm install --frozen-lockfile
