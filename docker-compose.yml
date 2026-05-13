@@ -1,9 +1,6 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:17
-    container_name: chessus_db
     profiles: ["local-db"]
     restart: always
     environment:
@@ -22,7 +19,6 @@ services:
 
   app:
     image: softvence/cheesus-app:${APP_VERSION}
-    container_name: chessus-app
     platform: linux/amd64
     restart: unless-stopped
     env_file:

@@ -101,6 +101,8 @@ jobs:
             cd backend
 
             echo "Deploying to ${{ matrix.server }}"
+            
+            docker compose down --remove-orphans
 
             docker compose pull
 
