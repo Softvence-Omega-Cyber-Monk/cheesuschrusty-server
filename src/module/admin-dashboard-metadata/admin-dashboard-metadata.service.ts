@@ -1,8 +1,8 @@
 // src/module/admin/admin.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from 'src/common/service/prisma/prisma.service';
+import { PrismaService } from '../../common/service/prisma/prisma.service';
 import { SubscriptionService } from '../subscription/subscription.service';
-import { lemon } from '../subscription/lemon-squeezy.client';
+import { LemonSqueezyClient } from '../subscription/lemon-squeezy.client';
 
 interface UsersOverviewItem {
   month: string;
@@ -43,6 +43,7 @@ export class AdminDashboardMetadataService {
   constructor(
     private prisma: PrismaService,
     private subscriptionService: SubscriptionService,
+    private lemonClient: LemonSqueezyClient,
   ) {}
 
   //  async getDashboardData() {
@@ -240,6 +241,7 @@ export class AdminDashboardMetadataService {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+        const lemon = await this.lemonClient.getClient();
         // 1️⃣ Monthly revenue — last 30 days
         const monthlyOrdersRes = await lemon.get('/orders', {
           params: {

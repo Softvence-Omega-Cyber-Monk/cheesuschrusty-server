@@ -6,23 +6,23 @@ import {
   IsBoolean,
   IsOptional,
 } from 'class-validator';
-import { LessonType, AIProvider } from '@prisma/client';
+import { LessonType } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 
 const lessonTypes = Object.values(LessonType);
-const aiProviders = Object.values(AIProvider);
 
 export class CreateLessonContainerDto {
   @ApiProperty({
     description: 'The AI provider used for the lesson.',
-    enum: aiProviders,
-    example: AIProvider.OPENAI,
+    example: 'OPENAI',
   })
   @IsNotEmpty()
   @IsString()
-  @IsIn(aiProviders)
-  provider: AIProvider;
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  provider: string;
 
   @ApiProperty({
     description: 'Level identifier for the lesson.',
@@ -156,4 +156,14 @@ export class CreateLessonContainerDto {
   @IsNotEmpty()
   @IsString()
   LESSON_TITLE: string;
+
+  @ApiProperty({
+    description:
+      'A custom seed to guide AI content generation (e.g., specific vocabulary or context).',
+    example: 'Focus on restaurant vocabulary and past tense verbs.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  GENERATION_SEED?: string;
 }

@@ -1,5 +1,6 @@
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Prisma } from '@prisma/client';
 
 export class UpsertStudyPlanDto {
   @ApiProperty({
@@ -13,5 +14,5 @@ export class UpsertStudyPlanDto {
     additionalProperties: true,
   })
   @IsNotEmpty()
-  activities: any;
+  activities: Prisma.InputJsonValue;
 }

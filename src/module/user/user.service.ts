@@ -33,7 +33,7 @@ export class UserService {
   ) {
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { role: 'USER' };
+    const whereClause: Prisma.UserWhereInput = { role: 'USER' };
     if (typeof isActive === 'boolean') whereClause.isActive = isActive;
     if (search) {
       whereClause.OR = [
@@ -43,7 +43,7 @@ export class UserService {
     }
 
     // Fetch users from DB
-    const [total, users] = await this.prisma.$transaction([
+    const [, users] = await this.prisma.$transaction([
       this.prisma.user.count({ where: whereClause }),
       this.prisma.user.findMany({
         where: whereClause,
@@ -72,6 +72,7 @@ export class UserService {
         email: u.email,
         emailVerified: u.emailVerified,
         name: u.name,
+        username: u.username,
         avatar: u.avatar,
         isActive: u.isActive,
         hasUsedTrial: u.hasUsedTrial,
@@ -144,6 +145,7 @@ export class UserService {
       email: user.email,
       emailVerified: user.emailVerified,
       name: user.name?.trim() || '(No name)',
+      username: user.username,
       avatar: user.avatar,
       isActive: user.isActive,
       hasUsedTrial: user.hasUsedTrial,
@@ -358,12 +360,12 @@ export class UserService {
         userId, // unique
       },
       update: {
-        activities: dto.activities,
+        activities: dto.activities as unknown as Prisma.InputJsonValue,
         generatedAt: new Date(),
       },
       create: {
         userId,
-        activities: dto.activities,
+        activities: dto.activities as unknown as Prisma.InputJsonValue,
       },
       select: {
         id: true,
@@ -393,7 +395,7 @@ export class UserService {
    * Admin edit user details
    * Only accessible by SUPER_ADMIN, CONTENT_MANAGER, SUPORT_MANAGER
    */
-  async adminEditUser(userId: string, dto: AdminEditUserDto, _adminRole: Role) {
+  async adminEditUser(userId: string, dto: AdminEditUserDto) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -473,6 +475,7 @@ export class UserService {
       email: updatedUser.email,
       emailVerified: updatedUser.emailVerified,
       name: updatedUser.name,
+      username: updatedUser.username,
       avatar: updatedUser.avatar,
       isActive: updatedUser.isActive,
       hasUsedTrial: updatedUser.hasUsedTrial,

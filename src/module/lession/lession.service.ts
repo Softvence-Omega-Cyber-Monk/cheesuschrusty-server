@@ -109,6 +109,7 @@ export class LessionService {
       TEST_MODE: lesson.test_mode,
       LESSON_TITLE: lesson.lesson_title ?? 'Auto',
       isPublished: lesson.isPublished,
+      generation_seed: lesson.generation_seed,
       createdAt: lesson.createdAt,
       ...(questionSets ? { questionSets } : {}),
     };
@@ -179,6 +180,7 @@ export class LessionService {
         test_mode: dto.TEST_MODE,
         lesson_title: dto.LESSON_TITLE,
         target_language: dto.TARGET_LANGUAGE,
+        generation_seed: dto.GENERATION_SEED,
         isPublished: false,
       },
     });
@@ -208,6 +210,7 @@ export class LessionService {
       test_mode: dto.TEST_MODE,
       lesson_title: dto.LESSON_TITLE,
       target_language: dto.TARGET_LANGUAGE,
+      generation_seed: (dto as any).GENERATION_SEED,
       isPublished: false,
     };
 

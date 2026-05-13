@@ -15,15 +15,29 @@ export class AnalyticsController {
   @Get('advanced')
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'Get advanced analytics dashboard data',
-    description:
-      'Includes weekly stats, streak, CEFR skill progress, badges, recent sessions, and weekly performance graph',
+    summary: 'Get advanced analytics dashboard data.',
+    description: `Includes weekly stats, streak, CEFR skill progress, badges, and performance graphs.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/analytics/advanced \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
   })
   @ApiResponse({
     status: 200,
-    description: 'Advanced analytics data retrieved successfully',
+    description: 'Advanced analytics data retrieved successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: {
+          weekly_stats: { xp: 350, lessons: 12 },
+          streak: { current: 5, longest: 10 },
+          skill_progress: { reading: 85, grammar: 40 },
+        },
+      },
+    },
   })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAdvancedAnalytics(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;
 
@@ -40,7 +54,26 @@ export class AnalyticsController {
   // In AnalyticsController
   @Get('overview')
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Get dashboard overview for free/pro users' })
+  @ApiOperation({
+    summary: 'Get dashboard overview for free/pro users.',
+    description: `Provides a snapshot of the user's current progress and available content.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/analytics/overview \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard overview data.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { currentLevel: 'A1', completionPercentage: 45 },
+      },
+    },
+  })
   async getOverviewDashboard(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;
     const data = await this.analyticsService.getOverviewDashboard(userId);
@@ -55,7 +88,26 @@ export class AnalyticsController {
 
   @Get('practice')
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Get practice dashboard data' })
+  @ApiOperation({
+    summary: 'Get practice dashboard data.',
+    description: `Retrieves data for the practice mode, including recent mistakes and review items.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/analytics/practice \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Practice dashboard data.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: { itemsToReview: 5, masteryScore: 78 },
+      },
+    },
+  })
   async getPracticeDashboard(@Req() req: any, @Res() res: Response) {
     const userId = req.user.id;
     const data = await this.analyticsService.getPracticeDashboard(userId);

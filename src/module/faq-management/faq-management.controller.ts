@@ -40,9 +40,29 @@ export class FaqManagementController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new FAQ entry.' })
+  @ApiOperation({
+    summary: 'Create a new FAQ entry.',
+    description: `Adds a question-answer pair to the help center.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/admin/faqs \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"question": "How to reset password?", "answer": "Go to settings..."}'
+    \`\`\``,
+  })
   @ApiBody({ type: CreateFaqDto })
-  @ApiResponse({ status: 201, description: 'FAQ created successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'FAQ created successfully.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        data: { id: 1, question: '...', answer: '...' },
+      },
+    },
+  })
   async createFaq(@Body() dto: CreateFaqDto, @Res() res: Response) {
     const faq = await this.faqManagementService.createFaq(dto);
 
@@ -55,7 +75,15 @@ export class FaqManagementController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all FAQ entries.' })
+  @ApiOperation({
+    summary: 'Get all FAQ entries.',
+    description: `Retrieves the full list of FAQs.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/admin/faqs \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
   @ApiResponse({ status: 200, description: 'FAQ list retrieved successfully.' })
   async getAllFaqs(@Res() res: Response) {
     const faqs = await this.faqManagementService.getAllFaqs();

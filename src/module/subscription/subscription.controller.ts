@@ -7,7 +7,7 @@ import {
   HttpStatus,
   Get,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBody } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorators';
 import { SubscriptionService } from './subscription.service';
 import { Request, Response } from 'express';
@@ -26,8 +26,29 @@ export class SubscriptionController {
    */
   @Post('checkout')
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Create Lemon Squeezy subscription checkout' })
+  @ApiOperation({
+    summary: 'Create subscription checkout.',
+    description: `Generates a Lemon Squeezy checkout URL for the selected plan.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/subscriptions/checkout \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"planAlias": "PRO_MONTHLY"}'
+    \`\`\``,
+  })
   @ApiBody({ type: CreateSubscriptionDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Checkout URL generated.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        data: { checkoutUrl: 'https://checkout.lemonsqueezy.com/...' },
+      },
+    },
+  })
   async createCheckout(
     @Body() body: CreateSubscriptionDto,
     @Req() req: Request,
@@ -125,7 +146,30 @@ export class SubscriptionController {
    */
   @Get('me')
   @Roles(Role.USER)
-  @ApiOperation({ summary: 'Get current user subscription details' })
+  @ApiOperation({
+    summary: 'Get current user subscription.',
+    description: `Retrieves plan details, status, and renewal date.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/subscriptions/me \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription info retrieved.',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        data: {
+          status: 'active',
+          plan: 'PRO_MONTHLY',
+          endsAt: '2026-06-09T...',
+        },
+      },
+    },
+  })
   async getMySubscription(@Req() req: Request, @Res() res: Response) {
     const details = await this.subService.getMySubscriptionDetails(
       req.user!.id,

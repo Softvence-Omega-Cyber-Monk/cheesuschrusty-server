@@ -71,11 +71,6 @@ enum TicketPriority {
   HIGH
 }
 
-enum AIProvider {
-  OPENAI
-  GROK
-  GEMINI
-}
 
 enum SkillArea {
   reading
@@ -105,10 +100,13 @@ enum ChatSupportTicketStatus {
 enum CredentialProvider {
   OPENAI
   GROK
+  GEMINI
+  STRIPE
   LEMONSQUEEZY
   CLOUDINARY
+  OPENROUTER
 }
-
+ 
 // ------------------------
 // USER
 // ------------------------
@@ -228,7 +226,7 @@ model Lesson {
   task_id         String?
   topic           String?
   skill           LessonType?
-  provider        AIProvider?
+  provider        String?
   domain          String?
   is_pro          Boolean     @default(false)
   level           String?
@@ -244,6 +242,7 @@ model Lesson {
   isPublished     Boolean     @default(false)
   createdAt       DateTime    @default(now())
   target_language String?
+  generation_seed String?
 
   questionSets     QuestionSet[]
   practiceSessions PracticeSession[] // ← ADD THIS LINE (for future use)

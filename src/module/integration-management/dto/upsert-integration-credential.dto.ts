@@ -4,8 +4,9 @@ import { IsNotEmptyObject, IsObject } from 'class-validator';
 export class UpsertIntegrationCredentialDto {
   @ApiProperty({
     example: {
-      apiKey: 'sk-example',
-      organizationId: 'org_123',
+      api_key: 'sk-example-key',
+      model_name: 'gpt-4o',
+      organization_id: 'org_123',
     },
   })
   @IsObject()

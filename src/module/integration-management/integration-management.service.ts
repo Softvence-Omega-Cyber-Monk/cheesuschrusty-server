@@ -1,16 +1,15 @@
 import {
   Injectable,
-  InternalServerErrorException,
   Logger,
+  UnauthorizedException,
+  NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { CredentialProvider, Prisma } from '@prisma/client';
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from 'crypto';
-import { PrismaService } from 'src/common/service/prisma/prisma.service';
+import { createHash } from 'crypto';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../common/service/prisma/prisma.service';
+import { EncryptionService } from '../../common/service/encryption/encryption.service';
 import { RecordIntegrationUsageDto } from './dto/record-integration-usage.dto';
 
 type CredentialPayload = Record<string, string | number | boolean>;
@@ -21,11 +20,84 @@ export class IntegrationManagementService {
   private readonly supportedProviders = [
     CredentialProvider.OPENAI,
     CredentialProvider.GROK,
+    (CredentialProvider as any).GEMINI,
+    (CredentialProvider as any).STRIPE,
     CredentialProvider.LEMONSQUEEZY,
     CredentialProvider.CLOUDINARY,
-  ];
+  ] as CredentialProvider[];
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryptionService: EncryptionService,
+  ) {}
+
+  // ... (listCredentials, upsertCredential, getDecryptedCredential stay same)
+
+  async revealCredentials(
+    userId: string,
+    provider: CredentialProvider,
+    password: string,
+  ) {
+    // 1. Verify User exists and is active
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('User account is invalid or inactive.');
+    }
+
+    // 2. Verify Password (Step-up authentication)
+    const isMatch = await bcrypt.compare(password, user.password || '');
+    if (!isMatch) {
+      this.logger.warn(
+        `Failed credential reveal attempt for ${provider} by User ${userId}`,
+      );
+      throw new UnauthorizedException(
+        'Invalid password for credential reveal.',
+      );
+    }
+
+    // 3. Get Credentials
+    const record = await this.prisma.integrationCredential.findUnique({
+      where: { provider },
+    });
+
+    if (!record) {
+      throw new NotFoundException(`No credentials found for ${provider}.`);
+    }
+
+    // 4. Decrypt Payload
+    let decrypted: CredentialPayload;
+    try {
+      decrypted = JSON.parse(
+        this.encryptionService.decrypt(record.encryptedPayload),
+      );
+    } catch (error) {
+      this.logger.error(`Decryption failed for ${provider}`, error);
+      throw new InternalServerErrorException('Failed to decrypt credentials.');
+    }
+
+    // 5. Audit Log (using IntegrationUsageStat)
+    await this.prisma.integrationUsageStat.create({
+      data: {
+        provider,
+        operation: 'CREDENTIAL_REVEAL',
+        requestCount: 1,
+        metadata: {
+          adminId: userId,
+          revealedAt: new Date(),
+          reason: 'Admin requested raw credential view',
+        },
+      },
+    });
+
+    this.logger.log(
+      `Sensitive credentials for ${provider} revealed to Admin ${userId}`,
+    );
+
+    return decrypted;
+  }
 
   async listCredentials() {
     const records = await this.prisma.integrationCredential.findMany({
@@ -71,7 +143,7 @@ export class IntegrationManagementService {
     const data = await this.prisma.integrationCredential.upsert({
       where: { provider },
       update: {
-        encryptedPayload: this.encrypt(normalizedPayload),
+        encryptedPayload: this.encryptionService.encrypt(normalizedPayload),
         payloadHash,
         fieldNames: Object.keys(credentials).sort(),
         isActive: true,
@@ -79,7 +151,7 @@ export class IntegrationManagementService {
       },
       create: {
         provider,
-        encryptedPayload: this.encrypt(normalizedPayload),
+        encryptedPayload: this.encryptionService.encrypt(normalizedPayload),
         payloadHash,
         fieldNames: Object.keys(credentials).sort(),
         isActive: true,
@@ -104,11 +176,41 @@ export class IntegrationManagementService {
       where: { provider },
     });
 
-    if (!record) return null;
+    if (!record || !record.isActive) return null;
 
-    return JSON.parse(
-      this.decrypt(record.encryptedPayload),
-    ) as CredentialPayload;
+    try {
+      return JSON.parse(
+        this.encryptionService.decrypt(record.encryptedPayload),
+      ) as CredentialPayload;
+    } catch (error) {
+      this.logger.error(`Failed to decrypt credentials for ${provider}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Retrieves a list of all providers that have active credentials
+   * and are traditionally used for AI operations.
+   */
+  async getActiveAIProviders() {
+    const aiSlugs = [
+      CredentialProvider.OPENAI,
+      CredentialProvider.GEMINI,
+      CredentialProvider.GROK,
+      CredentialProvider.OPENROUTER,
+    ];
+
+    const activeCredentials = await this.prisma.integrationCredential.findMany({
+      where: {
+        provider: { in: aiSlugs },
+        isActive: true,
+      },
+      select: {
+        provider: true,
+      },
+    });
+
+    return activeCredentials.map((c) => c.provider);
   }
 
   async recordUsage(dto: RecordIntegrationUsageDto) {
@@ -236,7 +338,7 @@ export class IntegrationManagementService {
   private getMaskedPayload(encryptedPayload: string) {
     try {
       const payload = JSON.parse(
-        this.decrypt(encryptedPayload),
+        this.encryptionService.decrypt(encryptedPayload),
       ) as CredentialPayload;
       return Object.fromEntries(
         Object.entries(payload).map(([key, value]) => [
@@ -259,56 +361,6 @@ export class IntegrationManagementService {
     );
 
     return JSON.stringify(Object.fromEntries(sortedEntries));
-  }
-
-  private encrypt(value: string) {
-    const encryptionKey = this.getEncryptionKey();
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv);
-    const encrypted = Buffer.concat([
-      cipher.update(value, 'utf8'),
-      cipher.final(),
-    ]);
-    const tag = cipher.getAuthTag();
-
-    return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
-  }
-
-  private decrypt(value: string) {
-    const encryptionKey = this.getEncryptionKey();
-    const [iv, tag, encrypted] = value.split(':');
-
-    if (!iv || !tag || !encrypted) {
-      throw new InternalServerErrorException(
-        'Stored credential payload is invalid.',
-      );
-    }
-
-    const decipher = createDecipheriv(
-      'aes-256-gcm',
-      encryptionKey,
-      Buffer.from(iv, 'base64'),
-    );
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
-
-    const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(encrypted, 'base64')),
-      decipher.final(),
-    ]);
-
-    return decrypted.toString('utf8');
-  }
-
-  private getEncryptionKey() {
-    const secret = process.env.CREDENTIAL_ENCRYPTION_KEY;
-
-    if (!secret) {
-      throw new InternalServerErrorException(
-        'CREDENTIAL_ENCRYPTION_KEY is not configured.',
-      );
-    }
-
-    return createHash('sha256').update(secret).digest();
   }
 
   private maskValue(value: string) {

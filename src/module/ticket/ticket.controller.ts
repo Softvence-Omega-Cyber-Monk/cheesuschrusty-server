@@ -42,10 +42,28 @@ export class TicketController {
   @Post()
   @Roles(Role.USER)
   @ApiOperation({
-    summary: 'USER: Create a new support ticket with initial message.',
+    summary: 'USER: Create a new support ticket.',
+    description: `Submits a subject and initial message to start a support thread.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/tickets \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"subject": "Subscription Issue", "message": "I was charged twice..."}'
+    \`\`\``,
   })
   @ApiBody({ type: CreateTicketDto })
-  @ApiResponse({ status: 201, description: 'Ticket created successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Ticket created successfully.',
+    schema: {
+      example: {
+        statusCode: 201,
+        success: true,
+        data: { id: 'uuid', subject: 'Subscription Issue', status: 'OPEN' },
+      },
+    },
+  })
   async createTicket(
     @Req() req: Request,
     @Res() res: Response,
@@ -170,11 +188,19 @@ export class TicketController {
   @Post(':id/message')
   @Roles(Role.USER, Role.SUPER_ADMIN, Role.SUPORT_MANAGER)
   @ApiOperation({
-    summary:
-      'Add a message to an existing ticket (user can only reply to own tickets).',
+    summary: 'Add a message to an existing ticket.',
+    description: `Append a reply to the ticket thread.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X POST http://localhost:5001/api/v1/tickets/T-123/message \\
+    -H "Authorization: Bearer YOUR_TOKEN" \\
+    -H "Content-Type: application/json" \\
+    -d '{"message": "Thank you for the update."}'
+    \`\`\``,
   })
   @ApiBody({ type: AddTicketMessageDto })
   @ApiParam({ name: 'id', description: 'Ticket ID' })
+  @ApiResponse({ status: 201, description: 'Message added.' })
   async addMessage(
     @Req() req: Request,
     @Res() res: Response,

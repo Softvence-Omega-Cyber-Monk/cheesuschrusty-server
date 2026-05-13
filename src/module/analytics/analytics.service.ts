@@ -66,33 +66,46 @@ export class AnalyticsService {
     // Recent achievements
     const recentAchievements = await this.getRecentAchievements(userId);
 
-    // Practice Areas — real completed lessons per skill
+    // 1. Get all unique skills currently present in the lessons table
+    const uniqueSkills = await this.prisma.lesson.findMany({
+      where: { isPublished: true },
+      distinct: ['skill'],
+      select: { skill: true },
+    });
+
+    // 2. Map through those skills to get progress dynamically
     const practiceAreas = await Promise.all(
-      ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
-        const completed = await this.prisma.practiceSession.count({
-          where: {
-            userId,
-            skillArea: skill as SkillArea,
-            lessonId: { not: null }, // only real lessons
-          },
-        });
+      uniqueSkills
+        .filter((l) => l.skill !== null)
+        .map(async (lessonSkill) => {
+          const skill = lessonSkill.skill!;
 
-        const total = await this.prisma.lesson.count({
-          where: {
-            isPublished: true,
-            skill: skill.toUpperCase() as LessonType, // Changed from 'type' to 'skill'
-          },
-        });
+          const completed = await this.prisma.practiceSession.count({
+            where: {
+              userId,
+              lesson: {
+                skill: skill,
+              },
+            },
+          });
 
-        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          const total = await this.prisma.lesson.count({
+            where: {
+              isPublished: true,
+              skill: skill,
+            },
+          });
 
-        return {
-          skillArea: skill,
-          lessonsCompleted: completed,
-          totalLessons: total,
-          progress,
-        };
-      }),
+          const progress =
+            total > 0 ? Math.round((completed / total) * 100) : 0;
+
+          return {
+            skillArea: skill.toLowerCase(),
+            lessonsCompleted: completed,
+            totalLessons: total,
+            progress,
+          };
+        }),
     );
 
     return {
@@ -170,34 +183,47 @@ export class AnalyticsService {
           )
         : 0;
 
-    // Practice Areas — lessons completed per skill
+    // 1. Get all unique skills currently present in the lessons table
+    const uniqueSkills = await this.prisma.lesson.findMany({
+      where: { isPublished: true },
+      distinct: ['skill'],
+      select: { skill: true },
+    });
+
+    // 2. Map through those skills to get progress dynamically
     const practiceAreas = await Promise.all(
-      ['reading', 'listening', 'writing', 'speaking'].map(async (skill) => {
-        const completed = await this.prisma.practiceSession.count({
-          where: {
-            userId,
-            skillArea: skill as SkillArea,
-            lessonId: { not: null },
-          },
-        });
+      uniqueSkills
+        .filter((l) => l.skill !== null)
+        .map(async (lessonSkill) => {
+          const skill = lessonSkill.skill!;
 
-        const total = await this.prisma.lesson.count({
-          where: {
-            isPublished: true,
-            skill: skill.toUpperCase() as LessonType, // Changed from 'type' to 'skill'
-          },
-        });
+          const completed = await this.prisma.practiceSession.count({
+            where: {
+              userId,
+              lesson: {
+                skill: skill,
+              },
+            },
+          });
 
-        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          const total = await this.prisma.lesson.count({
+            where: {
+              isPublished: true,
+              skill: skill,
+            },
+          });
 
-        return {
-          skillArea: skill,
-          title: this.getSkillTitle(skill as SkillArea),
-          lessonsCompleted: completed,
-          totalLessons: total,
-          progress,
-        };
-      }),
+          const progress =
+            total > 0 ? Math.round((completed / total) * 100) : 0;
+
+          return {
+            skillArea: skill.toLowerCase(),
+            title: this.getSkillTitle(skill.toLowerCase() as any),
+            lessonsCompleted: completed,
+            totalLessons: total,
+            progress,
+          };
+        }),
     );
 
     return {

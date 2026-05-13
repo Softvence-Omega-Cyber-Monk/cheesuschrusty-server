@@ -4,5 +4,7 @@ import { swaggerConfig } from './swagger.config';
 
 export function setupSwagger(app: INestApplication) {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    customSiteTitle: 'Cheesus Chrusty API',
+  });
 }

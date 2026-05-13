@@ -1,12 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
+// Define local interfaces to satisfy linter when @types/nodemailer is missing
+interface Transporter {
+  sendMail(options: any): Promise<Record<string, any>>;
+}
+
+interface NodemailerModule {
+  createTransport(options: any): Transporter;
+}
+
+const mailer = nodemailer as unknown as NodemailerModule;
+
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
+  private transporter: Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
+    this.transporter = mailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT), // 587
       secure: false, // STARTTLS for 587
