@@ -8,6 +8,8 @@ RUN apk add --no-cache curl python3 make g++
 # Install pnpm
 RUN npm install -g pnpm
 
+ENV PNPM_ONLY_BUILT_DEPENDENCIES_ALLOW_ALL=true
+
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 
