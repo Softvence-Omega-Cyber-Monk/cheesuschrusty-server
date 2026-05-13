@@ -1,14 +1,14 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-# 🔥 install curl
-RUN apk add --no-cache curl
+# 🔥 install curl and build tools for native modules (like bcrypt)
+RUN apk add --no-cache curl python3 make g++
 
 COPY package*.json ./
 COPY prisma ./prisma
 
-RUN npm install
+RUN npm install --frozen-lockfile || npm install
 RUN npx prisma generate
 
 COPY . .
