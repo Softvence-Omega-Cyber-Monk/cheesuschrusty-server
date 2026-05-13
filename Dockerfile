@@ -6,14 +6,14 @@ WORKDIR /app
 RUN apk add --no-cache curl python3 make g++
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 
 ENV PNPM_ONLY_BUILT_DEPENDENCIES_ALLOW_ALL=true
 
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 
-RUN pnpm install --frozen-lockfile --no-ignore-scripts
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
