@@ -2,7 +2,7 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# 🔥 install curl and build tools for native modules (like bcrypt)
+# install curl and build tools for native modules (like bcrypt)
 RUN apk add --no-cache curl python3 make g++
 
 # Install pnpm
