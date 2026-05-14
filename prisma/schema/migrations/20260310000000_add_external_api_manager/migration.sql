@@ -1,0 +1,2 @@
+-- Placeholder for missing migration found in database but not in local history
+-- This file is intentionally empty to satisfy Prisma's consistency checks.
