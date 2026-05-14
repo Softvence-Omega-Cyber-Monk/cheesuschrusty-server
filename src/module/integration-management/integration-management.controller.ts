@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CredentialProvider, Role } from '@prisma/client';
 import { Response } from 'express';
@@ -217,13 +218,20 @@ export class IntegrationManagementController {
   @ApiBody({ type: UpsertIntegrationCredentialDto })
   @ApiResponse({ status: 200, description: 'Credentials stored.' })
   async upsertCredential(
-    @Param('provider', new ParseEnumPipe(CredentialProvider))
-    provider: CredentialProvider,
+    @Param('provider') provider: string,
     @Body() dto: UpsertIntegrationCredentialDto,
     @Res() res: Response,
   ) {
+    const normalizedProvider = provider.toUpperCase() as CredentialProvider;
+
+    if (!Object.values(CredentialProvider).includes(normalizedProvider)) {
+      throw new BadRequestException(
+        `Invalid provider: ${provider}. Must be one of: ${Object.values(CredentialProvider).join(', ')}`,
+      );
+    }
+
     const data = await this.integrationManagementService.upsertCredential(
-      provider,
+      normalizedProvider,
       dto.credentials,
     );
 
