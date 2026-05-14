@@ -55,7 +55,7 @@ async function bootstrap() {
 
   // 2. Text/plain parser for prompt routes - PRESERVES ALL CHARACTERS EXACTLY
   app.use(
-    '/prompts/master-prompt-questions',
+    '/api/v1/prompts/master-prompt-questions',
     bodyParser.text({
       type: 'text/plain',
       limit: '50mb',
@@ -64,7 +64,7 @@ async function bootstrap() {
   );
 
   app.use(
-    '/prompts/master-prompt-feedback',
+    '/api/v1/prompts/master-prompt-feedback',
     bodyParser.text({
       type: 'text/plain',
       limit: '50mb',

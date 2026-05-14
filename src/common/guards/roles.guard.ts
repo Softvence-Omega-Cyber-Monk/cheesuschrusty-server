@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorators';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -26,7 +27,8 @@ export class RolesGuard implements CanActivate {
 
     if (isPublic || !requiredRoles) return true;
 
-    const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{ user: User }>();
+    const user = request.user;
     if (!user) throw new ForbiddenException('No user found');
 
     // Match exact roles only
