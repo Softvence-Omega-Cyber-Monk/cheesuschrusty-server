@@ -9,6 +9,11 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorators';
 import { User } from '@prisma/client';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -27,7 +32,7 @@ export class RolesGuard implements CanActivate {
 
     if (isPublic || !requiredRoles) return true;
 
-    const request = context.switchToHttp().getRequest<{ user: User }>();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
     if (!user) throw new ForbiddenException('No user found');
 
