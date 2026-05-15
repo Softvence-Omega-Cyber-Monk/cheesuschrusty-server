@@ -21,7 +21,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { Request, Response } from 'express';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Authentication')
 @Controller('auth')

@@ -454,7 +454,7 @@ export class FlashcardService {
             remainingCardIds,
             correctCount,
             incorrectCount,
-          } as unknown as Prisma.InputJsonValue,
+          },
           status: 'FINISHED',
           dateCompleted: new Date(),
           totalTimeSeconds: dto.currentTimeSeconds ?? session.totalTimeSeconds,
@@ -482,7 +482,7 @@ export class FlashcardService {
             remainingCardIds,
             correctCount,
             incorrectCount,
-          } as unknown as Prisma.InputJsonValue,
+          },
         },
       });
     }

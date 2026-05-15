@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +18,7 @@ import {
   VerifyResetCodeDto,
 } from './dto/forget-reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { JwtPayload } from './strategy/jwt.strategy';
 import {
   generateOtpCode,
   getTokens,
@@ -106,8 +108,10 @@ export class AuthService {
     });
 
     // Send verification email
-    const html =
-      await this.mailTemplatesService.getEmailVerificationOtpTemplate(code, 10);
+    const html = this.mailTemplatesService.getEmailVerificationOtpTemplate(
+      code,
+      10,
+    );
 
     try {
       await this.mailerService.sendMail({
@@ -235,8 +239,10 @@ export class AuthService {
     });
 
     // Send verification email
-    const html =
-      await this.mailTemplatesService.getEmailVerificationOtpTemplate(code, 10);
+    const html = this.mailTemplatesService.getEmailVerificationOtpTemplate(
+      code,
+      10,
+    );
 
     try {
       await this.mailerService.sendMail({
@@ -303,7 +309,9 @@ export class AuthService {
     if (!isMatch) {
       // Increment failed attempts
       const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-      const updateData: any = { failedLoginAttempts: failedAttempts };
+      const updateData: Prisma.UserUpdateInput = {
+        failedLoginAttempts: failedAttempts,
+      };
 
       // Lock account if max attempts reached
       if (failedAttempts >= maxAttempts) {
@@ -360,9 +368,9 @@ export class AuthService {
   // ✅ Refresh token with improved error handling
   async refreshTokens(token: string) {
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = (await this.jwtService.verifyAsync(token, {
         secret: process.env.REFRESH_TOKEN_SECRET,
-      });
+      })) as unknown as JwtPayload;
 
       const user = await this.prisma.user.findUnique({
         where: { email: payload.email },
@@ -478,10 +486,7 @@ export class AuthService {
     });
 
     // Generate HTML template
-    const html = await this.mailTemplatesService.getResetPasswordOtpTemplate(
-      code,
-      5,
-    );
+    const html = this.mailTemplatesService.getResetPasswordOtpTemplate(code, 5);
 
     // Send email
     try {

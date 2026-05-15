@@ -2,13 +2,11 @@ import {
   IsString,
   IsNotEmpty,
   IsInt,
-  IsEnum,
   IsOptional,
   IsArray,
   ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Difficulty } from '@prisma/client';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 /**

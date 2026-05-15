@@ -8,6 +8,7 @@ import { setupSwagger } from './swagger/swagger.setup';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import * as bodyParser from 'body-parser';
 import * as express from 'express';
+import { Request } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -47,7 +48,7 @@ async function bootstrap() {
     '/subscriptions/webhook',
     bodyParser.raw({
       type: 'application/json',
-      verify: (req: any, res, buf) => {
+      verify: (req: Request, _res, buf) => {
         req.rawBody = buf;
       },
     }),
@@ -107,4 +108,6 @@ async function bootstrap() {
   console.log(`🚀 Server running on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to start server:', err);
+});

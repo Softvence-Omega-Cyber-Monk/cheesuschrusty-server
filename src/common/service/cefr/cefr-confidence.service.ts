@@ -1,7 +1,12 @@
 // src/common/service/cefr-confidence.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SkillArea, ConfidenceLevel, Difficulty } from '@prisma/client';
+import {
+  SkillArea,
+  ConfidenceLevel,
+  Difficulty,
+  CefrConfidenceCache,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -210,7 +215,7 @@ export class CefrConfidenceService {
     return { skills };
   }
 
-  private getMotivationalMessage(data: any): string {
+  private getMotivationalMessage(data: CefrConfidenceCache): string {
     if (data.cefrLevel === 'A1') {
       return "You're just starting — every step counts!";
     }

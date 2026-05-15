@@ -1,6 +1,6 @@
 // src/module/analytics/analytics.controller.ts
 import { Controller, Get, Req, Res, HttpStatus } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
@@ -38,8 +38,8 @@ export class AnalyticsController {
       },
     },
   })
-  async getAdvancedAnalytics(@Req() req: any, @Res() res: Response) {
-    const userId = req.user.id;
+  async getAdvancedAnalytics(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
 
     const data = await this.analyticsService.getAdvancedAnalytics(userId);
 
@@ -74,8 +74,8 @@ export class AnalyticsController {
       },
     },
   })
-  async getOverviewDashboard(@Req() req: any, @Res() res: Response) {
-    const userId = req.user.id;
+  async getOverviewDashboard(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
     const data = await this.analyticsService.getOverviewDashboard(userId);
 
     return sendResponse(res, {
@@ -108,8 +108,8 @@ export class AnalyticsController {
       },
     },
   })
-  async getPracticeDashboard(@Req() req: any, @Res() res: Response) {
-    const userId = req.user.id;
+  async getPracticeDashboard(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
     const data = await this.analyticsService.getPracticeDashboard(userId);
 
     return sendResponse(res, {

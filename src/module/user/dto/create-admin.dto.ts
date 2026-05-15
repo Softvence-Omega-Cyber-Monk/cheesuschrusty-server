@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsIn, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsIn } from 'class-validator';
 
 export class CreatePlatformUserDto {
   @ApiProperty({ example: 'manager@example.com' })

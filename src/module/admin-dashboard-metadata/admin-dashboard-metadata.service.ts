@@ -36,6 +36,17 @@ interface LearningProgressItem {
   users: number;
 }
 
+interface LemonOrder {
+  id: string;
+  attributes: {
+    total: number;
+  };
+}
+
+interface LemonResponseBody {
+  data: LemonOrder[];
+}
+
 @Injectable()
 export class AdminDashboardMetadataService {
   private readonly logger = new Logger(AdminDashboardMetadataService.name);
@@ -243,7 +254,7 @@ export class AdminDashboardMetadataService {
 
         const lemon = await this.lemonClient.getClient();
         // 1️⃣ Monthly revenue — last 30 days
-        const monthlyOrdersRes = await lemon.get('/orders', {
+        const monthlyOrdersRes = await lemon.get<LemonResponseBody>('/orders', {
           params: {
             subscription_id: subId,
             status: 'paid',
@@ -253,12 +264,12 @@ export class AdminDashboardMetadataService {
         });
 
         monthlyRevenue += monthlyOrdersRes.data.data.reduce(
-          (sum: number, order: any) => sum + order.attributes.total,
+          (sum: number, order) => sum + order.attributes.total,
           0,
         );
 
         // 2️⃣ Total revenue — all time
-        const totalOrdersRes = await lemon.get('/orders', {
+        const totalOrdersRes = await lemon.get<LemonResponseBody>('/orders', {
           params: {
             subscription_id: subId,
             status: 'paid',
@@ -267,7 +278,7 @@ export class AdminDashboardMetadataService {
         });
 
         totalRevenue += totalOrdersRes.data.data.reduce(
-          (sum: number, order: any) => sum + order.attributes.total,
+          (sum: number, order) => sum + order.attributes.total,
           0,
         );
       }

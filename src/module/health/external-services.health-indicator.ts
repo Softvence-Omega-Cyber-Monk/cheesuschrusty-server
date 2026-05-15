@@ -41,12 +41,13 @@ export class ExternalServicesHealthIndicator extends HealthIndicator {
       }
 
       return this.getStatus(key, true);
-    } catch (error) {
+    } catch (error: unknown) {
       // NOTE: We return true for the health indicator itself (so we don't throw 503)
       // but we report the internal status as 'down' with the error message.
+      const err = error as Error;
       return this.getStatus(key, true, {
         status: 'down',
-        message: error.message,
+        message: err.message,
         help: 'App will continue to function without this service.',
       });
     }

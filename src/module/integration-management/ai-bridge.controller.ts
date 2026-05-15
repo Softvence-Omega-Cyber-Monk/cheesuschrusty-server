@@ -21,7 +21,7 @@ import sendResponse from '../utils/sendResponse';
 export class AIBridgeController {
   private readonly allowedProviders = [
     CredentialProvider.OPENAI,
-    (CredentialProvider as any).GEMINI,
+    CredentialProvider.GEMINI,
     CredentialProvider.GROK,
   ] as CredentialProvider[];
 

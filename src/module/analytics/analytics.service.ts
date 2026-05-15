@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { PracticeSessionService } from '../practice-session/practice-session.service';
 import { CefrConfidenceService } from 'src/common/service/cefr/cefr-confidence.service';
-import { BadgeType, LessonType, SkillArea } from '@prisma/client';
+import { Badge, BadgeType, SkillArea } from '@prisma/client';
 import { MailService } from '../mail/mail.service';
 
 @Injectable()
@@ -152,7 +152,7 @@ export class AnalyticsService {
     );
 
     // Today's completed lessons (real lessons only)
-    const todayLessons = await this.prisma.practiceSession.count({
+    await this.prisma.practiceSession.count({
       where: {
         userId,
         lessonId: { not: null },
@@ -218,7 +218,7 @@ export class AnalyticsService {
 
           return {
             skillArea: skill.toLowerCase(),
-            title: this.getSkillTitle(skill.toLowerCase() as any),
+            title: this.getSkillTitle(skill.toLowerCase() as SkillArea),
             lessonsCompleted: completed,
             totalLessons: total,
             progress,
@@ -420,7 +420,7 @@ export class AnalyticsService {
 
     const badges = await this.prisma.badge.findMany();
 
-    const newBadgesEarned: { badge: any }[] = [];
+    const newBadgesEarned: { badge: Badge }[] = [];
 
     for (const badge of badges) {
       // Skip if already earned
@@ -446,7 +446,7 @@ export class AnalyticsService {
             shouldAward = true;
           break;
 
-        case BadgeType.ACCURACY:
+        case BadgeType.ACCURACY: {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -465,8 +465,9 @@ export class AnalyticsService {
 
           if (avgAccuracy >= (badge.threshold || 0)) shouldAward = true;
           break;
+        }
 
-        case BadgeType.SKILL_MASTERY:
+        case BadgeType.SKILL_MASTERY: {
           if (!badge.skillArea) break;
           const skillConfidence = user.cefrConfidence.find(
             (c) => c.skillArea === badge.skillArea,
@@ -478,13 +479,15 @@ export class AnalyticsService {
             shouldAward = true;
           }
           break;
+        }
 
-        case BadgeType.CITIZENSHIP_READY:
+        case BadgeType.CITIZENSHIP_READY: {
           const highConfidenceCount = user.cefrConfidence.filter(
             (c) => c.confidenceLevel === 'HIGH',
           ).length;
           if (highConfidenceCount === 4) shouldAward = true;
           break;
+        }
       }
 
       if (shouldAward) {

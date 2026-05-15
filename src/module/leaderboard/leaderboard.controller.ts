@@ -1,6 +1,6 @@
 // src/module/leaderboard/leaderboard.controller.ts
 import { Controller, Get, Query, Req, Res, HttpStatus } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { LeaderboardService } from './leaderboard.service';
@@ -38,12 +38,12 @@ export class LeaderboardController {
     },
   })
   async getProLeaderboard(
-    @Req() req: any,
+    @Req() req: Request,
     @Query('period')
     period: 'daily' | 'weekly' | 'monthly' | 'alltime' = 'alltime',
     @Res() res: Response,
   ) {
-    const userId = req.user.id;
+    const userId = req.user!.id;
     const data = await this.leaderboardService.getLeaderboard(userId, period);
 
     return sendResponse(res, {

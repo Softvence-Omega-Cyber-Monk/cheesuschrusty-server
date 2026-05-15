@@ -156,8 +156,8 @@ export class FlashcardController {
     type: Number,
     example: 1,
   })
-  async deleteCard(@Res() res: Response, @Req() { params }) {
-    const cardId = Number(params.id);
+  async deleteCard(@Res() res: Response, @Req() req: Request) {
+    const cardId = Number(req.params.id);
 
     const result = await this.flashcardService.deleteCard(cardId);
 
@@ -184,8 +184,8 @@ export class FlashcardController {
     type: Number,
     example: 1,
   })
-  async deleteCategory(@Res() res: Response, @Req() { params }) {
-    const categoryId = Number(params.id);
+  async deleteCategory(@Res() res: Response, @Req() req: Request) {
+    const categoryId = Number(req.params.id);
 
     const result = await this.flashcardService.deleteCategory(categoryId);
 
@@ -206,9 +206,9 @@ export class FlashcardController {
 
       readable
         .pipe(csv())
-        .on('data', (row) => {
+        .on('data', (row: Record<string, string>) => {
           // Handle possible BOM in CSV headers
-          const frontText = (row.frontText || row['ï»¿frontText'])?.trim();
+          const frontText = (row.frontText || row['frontText'])?.trim();
           const backText = row.backText?.trim();
 
           if (frontText && backText) {

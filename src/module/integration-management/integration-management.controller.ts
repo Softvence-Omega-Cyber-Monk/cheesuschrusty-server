@@ -339,6 +339,36 @@ export class IntegrationManagementController {
 
   @Public()
   @UseGuards(CredentialSyncGuard)
+  @Roles()
+  @ApiSecurity('sync-secret')
+  @Get('credentials/sync-all')
+  @ApiOperation({
+    summary: 'Bulk synchronization of all active credentials.',
+    description: `Allows a remote application to fetch all raw credentials at once using a shared secret.
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/integration-management/credentials/sync-all \\
+    -H "X-Sync-Secret: your-shared-secret"
+    \`\`\``,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'All active credentials retrieved successfully.',
+  })
+  async syncAllCredentials(@Res() res: Response) {
+    const data =
+      await this.integrationManagementService.getAllDecryptedCredentials();
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'All active integration credentials retrieved successfully.',
+      data,
+    });
+  }
+
+  @Public()
+  @UseGuards(CredentialSyncGuard)
   @Roles() // Override class-level roles
   @ApiSecurity('sync-secret')
   @Get('credential/:provider')

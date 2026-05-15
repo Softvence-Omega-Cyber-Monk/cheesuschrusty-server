@@ -3,6 +3,16 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import { SkillArea } from '@prisma/client';
 
+type LeaderboardUser = {
+  id: string;
+  name: string | null;
+  avatar: string | null;
+  xp: number;
+  currentStreak: number;
+  currentLevel: string;
+  periodXp?: number;
+};
+
 @Injectable()
 export class LeaderboardService {
   constructor(private prisma: PrismaService) {}
@@ -25,7 +35,7 @@ export class LeaderboardService {
 
     if (!currentUser) throw new Error('User not found');
 
-    let leaderboardUsers: any[] = [];
+    let leaderboardUsers: LeaderboardUser[] = [];
     let userRank = 1;
     let periodPoints = 0;
 
@@ -67,12 +77,21 @@ export class LeaderboardService {
       });
 
       leaderboardUsers = periodXp
-        .map((p) => {
+        .map((p): LeaderboardUser | null => {
           const user = users.find((u) => u.id === p.userId);
-          return user ? { ...user, periodXp: p._sum.xpEarned || 0 } : null;
+          if (!user) return null;
+          return {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            xp: user.xp,
+            currentStreak: user.currentStreak,
+            currentLevel: String(user.currentLevel),
+            periodXp: p._sum.xpEarned || 0,
+          };
         })
-        .filter(Boolean)
-        .sort((a, b) => (b as any).periodXp - (a as any).periodXp)
+        .filter((u): u is LeaderboardUser => u !== null)
+        .sort((a, b) => (b.periodXp || 0) - (a.periodXp || 0))
         .slice(0, 50);
 
       const userEntry = leaderboardUsers.find((u) => u.id === userId);
@@ -96,7 +115,7 @@ export class LeaderboardService {
           rank: index + 1,
           name: u.name,
           avatar: u.avatar,
-          points: period === 'alltime' ? u.xp : u.periodXp,
+          points: period === 'alltime' ? u.xp : u.periodXp || 0,
           streak: u.currentStreak,
           declaredLevel: u.currentLevel,
           estimatedLevel: estLevel,
@@ -127,11 +146,12 @@ export class LeaderboardService {
       case 'daily':
         now.setHours(0, 0, 0, 0);
         return now;
-      case 'weekly':
+      case 'weekly': {
         const day = now.getDay();
         now.setDate(now.getDate() - day);
         now.setHours(0, 0, 0, 0);
         return now;
+      }
       case 'monthly':
         now.setDate(1);
         now.setHours(0, 0, 0, 0);

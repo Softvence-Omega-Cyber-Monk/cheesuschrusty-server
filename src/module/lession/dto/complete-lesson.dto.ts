@@ -1,5 +1,5 @@
 // src/module/lesson/dto/complete-lesson.dto.ts
-import { IsNumber, IsInt, IsPositive, Min, IsOptional } from 'class-validator';
+import { IsNumber, IsInt, IsPositive, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CompleteLessonDto {

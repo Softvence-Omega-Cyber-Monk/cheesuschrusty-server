@@ -20,8 +20,8 @@ export class IntegrationManagementService {
   private readonly supportedProviders = [
     CredentialProvider.OPENAI,
     CredentialProvider.GROK,
-    (CredentialProvider as any).GEMINI,
-    (CredentialProvider as any).STRIPE,
+    CredentialProvider.GEMINI,
+    CredentialProvider.STRIPE,
     CredentialProvider.LEMONSQUEEZY,
     CredentialProvider.CLOUDINARY,
   ] as CredentialProvider[];
@@ -72,7 +72,7 @@ export class IntegrationManagementService {
     try {
       decrypted = JSON.parse(
         this.encryptionService.decrypt(record.encryptedPayload),
-      );
+      ) as CredentialPayload;
     } catch (error) {
       this.logger.error(`Decryption failed for ${provider}`, error);
       throw new InternalServerErrorException('Failed to decrypt credentials.');
@@ -186,6 +186,49 @@ export class IntegrationManagementService {
       this.logger.error(`Failed to decrypt credentials for ${provider}`, error);
       return null;
     }
+  }
+
+  async getAllDecryptedCredentials(): Promise<
+    (CredentialPayload & { provider: string })[]
+  > {
+    const records = await this.prisma.integrationCredential.findMany({
+      where: { isActive: true },
+    });
+
+    const results: (CredentialPayload & { provider: string })[] = [];
+
+    for (const record of records) {
+      try {
+        const decrypted = JSON.parse(
+          this.encryptionService.decrypt(record.encryptedPayload),
+        ) as CredentialPayload;
+
+        results.push({
+          provider: record.provider.toLowerCase(),
+          ...decrypted,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to decrypt credentials for ${record.provider} during bulk sync`,
+          error,
+        );
+      }
+    }
+
+    // Log the bulk sync event
+    if (results.length > 0) {
+      await this.recordUsage({
+        provider: CredentialProvider.OPENAI, // Use a default or system provider for bulk logs
+        operation: 'BULK_CREDENTIAL_SYNC',
+        metadata: {
+          timestamp: new Date(),
+          type: 'external_server_bulk_request',
+          providerCount: results.length,
+        },
+      });
+    }
+
+    return results;
   }
 
   /**

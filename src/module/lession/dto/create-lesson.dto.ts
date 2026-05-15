@@ -19,8 +19,8 @@ export class CreateLessonContainerDto {
   })
   @IsNotEmpty()
   @IsString()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : (value as string),
   )
   provider: string;
 
@@ -54,8 +54,8 @@ export class CreateLessonContainerDto {
     example: LessonType.GRAMMAR,
   })
   @IsNotEmpty()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : (value as string),
   )
   @IsString()
   @IsIn(lessonTypes)
@@ -92,10 +92,10 @@ export class CreateLessonContainerDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
-    return value;
+    return value as boolean;
   })
   @IsBoolean()
   is_pro?: boolean = false;

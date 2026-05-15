@@ -6,6 +6,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorators';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
@@ -30,8 +31,8 @@ export class JwtGuard extends AuthGuard('jwt') implements CanActivate {
     const canProceed = await super.canActivate(context);
     if (!canProceed) return false;
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = request.user as { id: string; email: string; role: string };
 
     // Check if user is active
     const existingUser = await this.prisma.user.findUnique({
