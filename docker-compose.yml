@@ -33,7 +33,7 @@ services:
         required: false
     command: >
       sh -c "
-      npm run start
+      pnpm run start
       "
 
 volumes:
