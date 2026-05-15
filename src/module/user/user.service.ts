@@ -360,12 +360,12 @@ export class UserService {
         userId, // unique
       },
       update: {
-        activities: dto.activities as unknown as Prisma.InputJsonValue,
+        activities: dto.activities,
         generatedAt: new Date(),
       },
       create: {
         userId,
-        activities: dto.activities as unknown as Prisma.InputJsonValue,
+        activities: dto.activities,
       },
       select: {
         id: true,

@@ -38,8 +38,8 @@ export class GetLessonsQueryDto {
     enum: lessonTypes,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : (value as string),
   )
   @IsString()
   @IsIn(lessonTypes)

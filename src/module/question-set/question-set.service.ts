@@ -28,12 +28,12 @@ export class QuestionSetService {
       },
       update: {
         prompt: dto.prompt,
-        content: dto.content as any,
+        content: dto.content,
       },
       create: {
         lessonId: dto.lessonId,
         prompt: dto.prompt,
-        content: dto.content as any,
+        content: dto.content,
       },
     });
 

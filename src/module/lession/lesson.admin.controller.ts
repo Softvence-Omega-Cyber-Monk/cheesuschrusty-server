@@ -13,7 +13,6 @@ import {
   Delete,
   HttpCode,
   BadRequestException,
-  UsePipes,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {

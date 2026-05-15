@@ -1,7 +1,14 @@
 import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/common/service/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { BadgeType, Role, SkillArea, LessonType, Difficulty, CredentialProvider } from '@prisma/client';
+import {
+  BadgeType,
+  Role,
+  SkillArea,
+  LessonType,
+  Difficulty,
+  CredentialProvider,
+} from '@prisma/client';
 import { createHash } from 'crypto';
 import { EncryptionService } from 'src/common/service/encryption/encryption.service';
 
@@ -36,12 +43,12 @@ export class SeederService implements OnApplicationBootstrap {
       );
     }
 
-    const supperAdmin = await this.prisma.user.findFirst({
+    const superAdmin = await this.prisma.user.findFirst({
       where: { role: Role.SUPER_ADMIN },
     });
 
-    if (supperAdmin) {
-      this.logger.log('Admin is already exists, skipping seeding.');
+    if (superAdmin) {
+      this.logger.log('Admin already exists, skipping seeding.');
       return;
     }
 
@@ -107,7 +114,7 @@ export class SeederService implements OnApplicationBootstrap {
       },
     });
 
-    // --- PRO YEARLY PLAN ---
+    // --- PRO LIFETIME PLAN ---
     const lifetimePlan = await this.prisma.plan.upsert({
       where: { alias: 'PRO_LIFETIME' },
       update: {
@@ -225,15 +232,18 @@ export class SeederService implements OnApplicationBootstrap {
     const faqs = [
       {
         question: 'How does the adaptive learning work?',
-        answer: 'Our AI analyzes your performance in real-time and adjusts the difficulty of flashcards and lessons to match your current skill level, focusing on areas where you need the most improvement.',
+        answer:
+          'Our AI analyzes your performance in real-time and adjusts the difficulty of flashcards and lessons to match your current skill level, focusing on areas where you need the most improvement.',
       },
       {
         question: 'Can I study offline?',
-        answer: 'Currently, the platform requires an internet connection to sync your progress with the AI engine, but we are working on an offline mode for flashcards.',
+        answer:
+          'Currently, the platform requires an internet connection to sync your progress with the AI engine, but we are working on an offline mode for flashcards.',
       },
       {
         question: 'What is the "Citizenship Ready" badge?',
-        answer: 'This is our highest achievement, awarded when you reach B1 level proficiency across all four skills (Reading, Writing, Listening, Speaking) with high confidence.',
+        answer:
+          'This is our highest achievement, awarded when you reach B1 level proficiency across all four skills (Reading, Writing, Listening, Speaking) with high confidence.',
       },
     ];
 
@@ -252,7 +262,7 @@ export class SeederService implements OnApplicationBootstrap {
   // ========================
   async seedFlashcards() {
     this.logger.log('Starting flashcard seeding...');
-    
+
     const categories = [
       { title: 'Common Italian Verbs', difficulty: Difficulty.A1 },
       { title: 'Food & Dining', difficulty: Difficulty.A2 },
@@ -289,7 +299,7 @@ export class SeederService implements OnApplicationBootstrap {
   // ========================
   async seedLessons() {
     this.logger.log('Starting lesson seeding...');
-    
+
     const lessons = [
       {
         lesson_title: 'Introduction to Italian Greetings',
@@ -357,7 +367,10 @@ export class SeederService implements OnApplicationBootstrap {
   async seedIntegrationCredentials() {
     this.logger.log('Starting integration credentials seeding...');
 
-    const integrations = [
+    const integrations: {
+      provider: CredentialProvider;
+      payload: Record<string, any>;
+    }[] = [
       {
         provider: CredentialProvider.OPENAI,
         payload: {
@@ -391,7 +404,8 @@ export class SeederService implements OnApplicationBootstrap {
       {
         provider: CredentialProvider.LEMONSQUEEZY,
         payload: {
-          api_key: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ',
+          api_key:
+            'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ',
           store_id: '259513',
           webhook_secret: 'ls_wh_9876543210fedcba9876543210',
           variant_id: '1164228',
@@ -416,7 +430,8 @@ export class SeederService implements OnApplicationBootstrap {
         .update(normalizedPayload)
         .digest('hex');
 
-      const encryptedPayload = this.encryptionService.encrypt(normalizedPayload);
+      const encryptedPayload =
+        this.encryptionService.encrypt(normalizedPayload);
 
       await this.prisma.integrationCredential.upsert({
         where: { provider: integration.provider },
@@ -438,6 +453,8 @@ export class SeederService implements OnApplicationBootstrap {
       });
     }
 
-    this.logger.log(`Seeded ${integrations.length} integration credentials successfully.`);
+    this.logger.log(
+      `Seeded ${integrations.length} integration credentials successfully.`,
+    );
   }
 }

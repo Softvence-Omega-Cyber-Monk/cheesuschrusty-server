@@ -46,7 +46,7 @@ export class EncryptionService {
       decrypted += decipher.final('utf8');
 
       return decrypted;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         'Failed to decrypt credentials. Master key might be incorrect.',
       );

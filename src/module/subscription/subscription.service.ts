@@ -297,7 +297,7 @@ interface LemonResponse<T> {
   };
 }
 
-interface LemonWebhookPayload {
+export interface LemonWebhookPayload {
   meta: {
     event_name: string;
     custom_data?: {
@@ -460,7 +460,7 @@ export class SubscriptionService {
 
       const periodStart = new Date(attrs.created_at as string);
       const periodEnd = attrs.renews_at
-        ? new Date(attrs.renews_at as string)
+        ? new Date(attrs.renews_at)
         : periodStart;
 
       const dbStatus: SubscriptionStatusString =

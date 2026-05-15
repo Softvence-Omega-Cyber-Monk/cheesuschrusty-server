@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MailTemplatesService {
-  async getEmailVerificationOtpTemplate(
+  getEmailVerificationOtpTemplate(
     otpCode: string,
     expirationMinutes = 5,
-  ): Promise<string> {
+  ): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,10 +45,7 @@ export class MailTemplatesService {
   }
 
   // ✅ New template for Reset Password OTP
-  async getResetPasswordOtpTemplate(
-    otpCode: string,
-    expirationMinutes = 5,
-  ): Promise<string> {
+  getResetPasswordOtpTemplate(otpCode: string, expirationMinutes = 5): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -52,8 +52,11 @@ export class CloudinaryService {
             error: UploadApiErrorResponse | undefined,
             result: UploadApiResponse | undefined,
           ) => {
-            if (error) reject(error);
-            else resolve(result!.secure_url);
+            if (error) {
+              reject(new Error(error.message || 'Cloudinary upload failed'));
+            } else {
+              resolve(result!.secure_url);
+            }
           },
         )
         .end(file.buffer);

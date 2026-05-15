@@ -210,7 +210,7 @@ export class LessionService {
       test_mode: dto.TEST_MODE,
       lesson_title: dto.LESSON_TITLE,
       target_language: dto.TARGET_LANGUAGE,
-      generation_seed: (dto as any).GENERATION_SEED,
+      generation_seed: dto.GENERATION_SEED,
       isPublished: false,
     };
 
@@ -244,7 +244,9 @@ export class LessionService {
       distinct: ['lessonId'],
     });
 
-    const completedLessonIds = completedSessions.map((s: any) => s.lessonId!);
+    const completedLessonIds = completedSessions.map(
+      (s: { lessonId: number | null }) => s.lessonId!,
+    );
 
     let nextLesson = await this.prisma.lesson.findFirst({
       where: {
@@ -307,7 +309,9 @@ export class LessionService {
       distinct: ['lessonId'],
     });
 
-    const completedLessonIds = completedSessions.map((s: any) => s.lessonId!);
+    const completedLessonIds = completedSessions.map(
+      (s: { lessonId: number | null }) => s.lessonId!,
+    );
 
     let nextLesson = await this.prisma.lesson.findFirst({
       where: {
@@ -368,7 +372,7 @@ export class LessionService {
     const levelCandidates = this.getLevelCandidates(query.level);
     const domainFilter = this.getDomainFilter(query.domain);
 
-    const whereClause: any = {
+    const whereClause: Prisma.LessonWhereInput = {
       ...(query.type && { skill: query.type }),
       ...(levelCandidates.length > 0 && { level: { in: levelCandidates } }),
       ...(domainFilter && { domain: domainFilter }),

@@ -154,7 +154,7 @@ export class TicketService {
     const skip = (page - 1) * limit;
 
     // Build dynamic filter object
-    const whereClause: any = {};
+    const whereClause: Prisma.SupportTicketWhereInput = {};
     if (status) whereClause.status = status;
     if (priority) whereClause.priority = priority;
 

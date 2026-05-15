@@ -1,5 +1,5 @@
 // src/auth/dto/password-recovery.dto.ts
-import { IsEmail, IsString, Length, MinLength } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RequestResetCodeDto {
