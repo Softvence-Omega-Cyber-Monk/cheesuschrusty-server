@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "PRISMA_MIGRATE_SKIP_ADVISORY_LOCK=1 pnpm exec prisma migrate deploy && pnpm exec prisma generate && (test -f dist/main.js || pnpm run build) && node --max-old-space-size=1024 dist/main.js",
+    "start": "PRISMA_MIGRATE_SKIP_ADVISORY_LOCK=1 pnpm exec prisma migrate deploy && pnpm exec prisma generate && (test -d dist || pnpm run build) && node --max-old-space-size=1024 $([ -f dist/main.js ] && echo dist/main.js || echo dist/src/main.js)",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
