@@ -17,14 +17,6 @@ type CredentialPayload = Record<string, string | number | boolean>;
 @Injectable()
 export class IntegrationManagementService {
   private readonly logger = new Logger(IntegrationManagementService.name);
-  private readonly supportedProviders = [
-    CredentialProvider.OPENAI,
-    CredentialProvider.GROK,
-    CredentialProvider.GEMINI,
-    CredentialProvider.STRIPE,
-    CredentialProvider.LEMONSQUEEZY,
-    CredentialProvider.CLOUDINARY,
-  ] as CredentialProvider[];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -104,7 +96,7 @@ export class IntegrationManagementService {
       orderBy: { provider: 'asc' },
     });
 
-    return this.supportedProviders.map((provider) => {
+    return Object.values(CredentialProvider).map((provider) => {
       const record = records.find((item) => item.provider === provider);
 
       if (!record) {
