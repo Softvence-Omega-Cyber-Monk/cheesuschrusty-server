@@ -85,8 +85,8 @@ jobs:
 
     # Load secrets into env
     env:
-      VPS1_HOST: ${{ secrets.VPS1_HOST }}
-      VPS1_PASSWORD: ${{ secrets.VPS1_PASSWORD }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
       VPS2_HOST: ${{ secrets.VPS2_HOST }}
       VPS2_PASSWORD: ${{ secrets.VPS2_PASSWORD }}
 
@@ -97,18 +97,18 @@ jobs:
       - name: Copy docker-compose to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ matrix.server == 'server1' && env.VPS1_HOST || env.VPS2_HOST }}
+          host: ${{ matrix.server == 'server1' && env.VPS_HOST || env.VPS2_HOST }}
           username: root
-          password: ${{ matrix.server == 'server1' && env.VPS1_PASSWORD || env.VPS2_PASSWORD }}
+          password: ${{ matrix.server == 'server1' && env.VPS_PASSWORD || env.VPS2_PASSWORD }}
           source: "docker-compose.yml"
           target: "backend"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ matrix.server == 'server1' && env.VPS1_HOST || env.VPS2_HOST }}
+          host: ${{ matrix.server == 'server1' && env.VPS_HOST || env.VPS2_HOST }}
           username: root
-          password: ${{ matrix.server == 'server1' && env.VPS1_PASSWORD || env.VPS2_PASSWORD }}
+          password: ${{ matrix.server == 'server1' && env.VPS_PASSWORD || env.VPS2_PASSWORD }}
           script: |
             cd backend
 
