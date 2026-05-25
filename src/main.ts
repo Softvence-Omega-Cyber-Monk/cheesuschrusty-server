@@ -31,6 +31,7 @@ async function bootstrap() {
       'https://cheesuschrustyy.netlify.app',
       'https://cheescusty.netlify.app',
       'https://prontocorso.com',
+      'https://www.prontocorso.com',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
