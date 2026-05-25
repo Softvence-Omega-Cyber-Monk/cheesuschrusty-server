@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   HttpStatus,
-  ParseEnumPipe,
   Post,
   Put,
   Query,
@@ -68,15 +67,23 @@ export class IntegrationManagementController {
     },
   })
   async revealCredential(
-    @Param('provider', new ParseEnumPipe(CredentialProvider))
-    provider: CredentialProvider,
+    @Param('provider')
+    provider: string,
     @Body() dto: RevealCredentialDto,
     @CurrentUser() user: { id: string },
     @Res() res: Response,
   ) {
+    const normalizedProvider = provider.toUpperCase() as CredentialProvider;
+
+    if (!Object.values(CredentialProvider).includes(normalizedProvider)) {
+      throw new BadRequestException(
+        `Invalid provider: ${provider}. Must be one of: ${Object.values(CredentialProvider).join(', ')}`,
+      );
+    }
+
     const data = await this.integrationManagementService.revealCredentials(
       user.id,
-      provider,
+      normalizedProvider,
       dto.password,
     );
 
@@ -86,7 +93,7 @@ export class IntegrationManagementController {
       message:
         'Credentials revealed successfully. This action has been logged.',
       data: {
-        provider: provider.toLowerCase(),
+        provider: normalizedProvider.toLowerCase(),
         ...data,
       },
     });
