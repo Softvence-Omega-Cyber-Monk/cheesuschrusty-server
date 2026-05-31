@@ -99,6 +99,45 @@ export class IntegrationManagementController {
     });
   }
 
+  @Get('credentials/:provider/test')
+  @ApiOperation({
+    summary: 'Test integration configuration and connection health.',
+    description: `Performs a health check/ping test for the specified integration provider (case-insensitive).
+    **Curl Example:**
+    \`\`\`bash
+    curl -X GET http://localhost:5001/api/v1/integration-management/credentials/openai/test \\
+    -H "Authorization: Bearer YOUR_TOKEN"
+    \`\`\``,
+  })
+  @ApiResponse({ status: 200, description: 'Service health check status.' })
+  async testCredential(
+    @Param('provider') provider: string,
+    @Res() res: Response,
+  ) {
+    const normalizedProvider = provider.toUpperCase() as CredentialProvider;
+
+    if (!Object.values(CredentialProvider).includes(normalizedProvider)) {
+      throw new BadRequestException(
+        `Invalid provider: ${provider}. Must be one of: ${Object.values(CredentialProvider).join(', ')}`,
+      );
+    }
+
+    const testResult =
+      await this.integrationManagementService.testProviderConnection(
+        normalizedProvider,
+      );
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: testResult.status === 'healthy',
+      message: testResult.message,
+      data: {
+        provider: normalizedProvider.toLowerCase(),
+        status: testResult.status,
+      },
+    });
+  }
+
   @Get('available-ai-providers')
   @ApiOperation({ summary: 'Discover active AI providers.' })
   @ApiResponse({ status: 200, description: 'List of active AI slugs.' })
