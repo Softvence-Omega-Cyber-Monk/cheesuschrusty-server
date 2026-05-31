@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/service/prisma/prisma.service';
 import { EncryptionService } from '../../common/service/encryption/encryption.service';
 import { RecordIntegrationUsageDto } from './dto/record-integration-usage.dto';
+import axios from 'axios';
 
 type CredentialPayload = Record<string, string | number | boolean>;
 
@@ -404,5 +405,183 @@ export class IntegrationManagementService {
     }
 
     return `${value.slice(0, 3)}${'*'.repeat(Math.max(4, value.length - 6))}${value.slice(-3)}`;
+  }
+
+  async testProviderConnection(provider: CredentialProvider) {
+    // 1. Get credentials (DB first, fallback to env)
+    let credentials = await this.getDecryptedCredential(provider);
+    if (!credentials) {
+      // Fallback logic
+      credentials = this.getEnvFallback(provider);
+    }
+
+    if (!credentials || Object.keys(credentials).length === 0) {
+      return {
+        status: 'unconfigured',
+        message: `No credentials configured for provider: ${provider}`,
+      };
+    }
+
+    try {
+      switch (provider) {
+        case CredentialProvider.OPENAI: {
+          const apiKey = credentials.api_key;
+          if (!apiKey) {
+            return { status: 'unconfigured', message: 'API key is missing' };
+          }
+          await axios.get('https://api.openai.com/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            timeout: 5000,
+          });
+          break;
+        }
+        case CredentialProvider.GEMINI: {
+          const apiKey = credentials.api_key;
+          if (!apiKey) {
+            return { status: 'unconfigured', message: 'API key is missing' };
+          }
+          await axios.get(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+            {
+              timeout: 5000,
+            },
+          );
+          break;
+        }
+        case CredentialProvider.GROK: {
+          const apiKey = credentials.api_key;
+          if (!apiKey) {
+            return { status: 'unconfigured', message: 'API key is missing' };
+          }
+          await axios.get('https://api.x.ai/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            timeout: 5000,
+          });
+          break;
+        }
+        case CredentialProvider.OPENROUTER: {
+          const apiKey = credentials.api_key;
+          if (!apiKey) {
+            return { status: 'unconfigured', message: 'API key is missing' };
+          }
+          await axios.get('https://openrouter.ai/api/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            timeout: 5000,
+          });
+          break;
+        }
+        case CredentialProvider.STRIPE: {
+          const secretKey = credentials.secret_key;
+          if (!secretKey) {
+            return { status: 'unconfigured', message: 'Secret key is missing' };
+          }
+          await axios.get('https://api.stripe.com/v1/balance', {
+            headers: { Authorization: `Bearer ${secretKey}` },
+            timeout: 5000,
+          });
+          break;
+        }
+        case CredentialProvider.LEMONSQUEEZY: {
+          const apiKey = credentials.api_key;
+          if (!apiKey) {
+            return { status: 'unconfigured', message: 'API key is missing' };
+          }
+          await axios.get('https://api.lemonsqueezy.com/v1/stores', {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              Accept: 'application/vnd.api+json',
+              'Content-Type': 'application/vnd.api+json',
+            },
+            timeout: 5000,
+          });
+          break;
+        }
+        case CredentialProvider.CLOUDINARY: {
+          const cloudName = credentials.cloud_name;
+          if (!cloudName) {
+            return { status: 'unconfigured', message: 'Cloud name is missing' };
+          }
+          await axios.get(`https://api.cloudinary.com/v1_1/${cloudName}/ping`, {
+            timeout: 5000,
+          });
+          break;
+        }
+        default:
+          return {
+            status: 'unhealthy',
+            message: `Unknown provider: ${provider as string}`,
+          };
+      }
+
+      return {
+        status: 'healthy',
+        message: `Successfully connected to ${provider}`,
+      };
+    } catch (error: unknown) {
+      let errorMessage = 'Unknown error';
+
+      if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as unknown;
+        errorMessage =
+          typeof responseData === 'string'
+            ? responseData
+            : JSON.stringify(responseData);
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = String(error);
+      }
+
+      return {
+        status: 'unhealthy',
+        message: `Failed connection test for ${provider}: ${errorMessage}`,
+      };
+    }
+  }
+
+  private getEnvFallback(provider: CredentialProvider): CredentialPayload {
+    switch (provider) {
+      case CredentialProvider.OPENAI:
+        return {
+          api_key: process.env.OPENAI_API_KEY || '',
+          model_name: process.env.OPENAI_MODEL || 'gpt-4o',
+        };
+      case CredentialProvider.GEMINI:
+        return {
+          api_key: process.env.GEMINI_API_KEY || '',
+          model_name: process.env.GEMINI_MODEL || 'gemini-1.5-pro',
+        };
+      case CredentialProvider.GROK:
+        return {
+          api_key: process.env.GROK_API_KEY || '',
+          model_name: process.env.GROK_MODEL || 'grok-1',
+        };
+      case CredentialProvider.STRIPE:
+        return {
+          secret_key: process.env.STRIPE_SECRET_KEY || '',
+          publishable_key: process.env.STRIPE_PUBLISHABLE_KEY || '',
+          webhook_secret: process.env.STRIPE_WEBHOOK_SECRET || '',
+        };
+      case CredentialProvider.LEMONSQUEEZY:
+        return {
+          api_key: process.env.LEMON_SQUEEZY_API_KEY || '',
+          store_id: process.env.LEMON_SQUEEZY_STORE_ID || '',
+          webhook_secret: process.env.LEMON_SQUEEZY_WEBHOOK_SECRET || '',
+          variant_id: process.env.LEMON_VARIANT_ID_MONTHLY || '',
+        };
+      case CredentialProvider.CLOUDINARY:
+        return {
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
+          api_key: process.env.CLOUDINARY_API_KEY || '',
+          api_secret: process.env.CLOUDINARY_API_SECRET || '',
+        };
+      case CredentialProvider.OPENROUTER:
+        return {
+          api_key: process.env.OPENROUTER_API_KEY || '',
+          model_name: process.env.OPENROUTER_MODEL || 'anthropic/claude-3-opus',
+        };
+      default:
+        return {};
+    }
   }
 }
